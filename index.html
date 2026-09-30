@@ -300,7 +300,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 <div class="wrap">
   <header class="top">
     <div class="brand">
-      <h1>Robi<em>scriptions</em></h1>
+      <h1 translate="no">Robi<em>scriptions</em></h1>
       <span class="sub">RSC-20 · Robinhood Chain</span>
     </div>
     <nav class="nav" aria-label="Pages">
@@ -322,7 +322,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       <p class="eyebrow">RSC-20 protocol</p>
       <h2>The first inscriptions on <em>Robinhood&nbsp;Chain</em>.</h2>
     </div>
-    <p id="intro-text">Mint <b id="intro-tick">$ROBI</b>, an RSC-20 token on Robinhood Chain. Pay in ETH, 1,000 $<span id="intro-tick2">ROBI</span> per mint, straight from your own wallet. Every mint is a transaction whose data carries a JSON payload <span class="mono">{"p":"rsc-20",…}</span>. No contract.</p>
+    <p id="intro-text">Mint <b id="intro-tick">$ROBI</b>, an RSC-20 token on Robinhood Chain. Pay in ETH, 1,000 $<span id="intro-tick2">ROBI</span> per mint, straight from your own wallet. Every mint is a transaction whose data carries a JSON payload <span class="mono" translate="no">{"p":"rsc-20",…}</span>. No contract.</p>
   </div>
 
   <div class="atelier">
@@ -355,7 +355,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 
       <div class="token-head">
         <p class="eyebrow" id="token-mode">Now minting</p>
-        <h3 class="token-name" id="token-name">$ROBI</h3>
+        <h3 class="token-name" id="token-name" translate="no">$ROBI</h3>
         <dl class="token-facts">
           <div><dt>Protocol</dt><dd class="mono">RSC-20</dd></div>
           <div><dt>Max supply</dt><dd class="mono" id="fact-max">–</dd></div>
@@ -416,7 +416,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 
     <aside class="panel" aria-live="polite">
       <h3>Order slip</h3>
-      <div class="scroll mono" id="uri-preview"></div>
+      <div class="scroll mono" id="uri-preview" translate="no"></div>
       <dl class="stats">
         <dt>Size</dt><dd id="st-size">–</dd>
         <dt>Network</dt><dd id="st-net">–</dd>
@@ -426,12 +426,12 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
         <dt class="total">Total</dt><dd id="st-total" class="total">–</dd>
       </dl>
       <div class="cta">
-        <button id="inscribe" class="btn" type="button">Connect to inscribe</button>
+        <button id="inscribe" class="btn" type="button" translate="no">Connect to inscribe</button>
         <div class="progress" id="progress" hidden><div id="progress-bar"></div></div>
         <button id="stop" class="btn ghost" type="button" hidden>Stop the batch</button>
         <p class="note" id="status"></p>
       </div>
-      <ul class="log" id="log"></ul>
+      <ul class="log" id="log" translate="no"></ul>
     </aside>
   </div>
 
@@ -445,19 +445,19 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
         <span class="num">i.</span>
         <h3><span class="mono">deploy</span> Create the token</h3>
         <p>Sets the ticker, the max supply and the amount per mint. The first deploy of a ticker is the one that counts.</p>
-        <pre id="spec-deploy"></pre>
+        <pre id="spec-deploy" translate="no"></pre>
       </div>
       <div class="op">
         <span class="num">ii.</span>
         <h3><span class="mono">mint</span> Mint units</h3>
         <p>Sent to the Robiscriptions mint address with the ETH price. The wallet that signs is credited, as long as supply remains.</p>
-        <pre id="spec-mint"></pre>
+        <pre id="spec-mint" translate="no"></pre>
       </div>
       <div class="op">
         <span class="num">iii.</span>
         <h3><span class="mono">transfer</span> Send a balance</h3>
         <p>Sent to the transfer recipient and debited from the sender's balance.</p>
-        <pre id="spec-transfer"></pre>
+        <pre id="spec-transfer" translate="no"></pre>
       </div>
     </div>
   </section>
