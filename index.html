@@ -272,6 +272,7 @@ footer .brandmark { font: 400 20px var(--f-display); color: var(--muted); }
 .intro h2 em, .soon-hero h2 em, .sec-head h2 em {
   font-style: normal; color: transparent; -webkit-text-stroke: 1.2px var(--ink);
 }
+.intro h2 em.chain-color { color: #D2FF05; -webkit-text-stroke: 0; }
 .sec-head h2 { font-weight: 800; font-size: clamp(26px, 3.4vw, 38px); letter-spacing: -.04em; text-transform: uppercase; }
 .tabs button { font-size: 15px; font-weight: 700; letter-spacing: -.01em; text-transform: uppercase; }
 .count-head input#count { font-weight: 800; font-size: 40px; letter-spacing: -.04em; }
@@ -353,7 +354,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   <div class="intro">
     <div>
       <p class="eyebrow">RSC-20 protocol</p>
-      <h2>The first inscriptions on <em>Robinhood&nbsp;Chain</em>.</h2>
+      <h2>The first inscriptions on <em class="chain-color">Robinhood&nbsp;Chain</em>.</h2>
     </div>
     <p id="intro-text">Mint <b id="intro-tick">$ROBI</b>, an RSC-20 token on Robinhood Chain. Pay in ETH, 1,000 $<span id="intro-tick2">ROBI</span> per mint, straight from your own wallet. Every mint is a transaction whose data carries a JSON payload <span class="mono" translate="no">{"p":"rsc-20",…}</span>. No contract.</p>
   </div>
