@@ -298,6 +298,8 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 .supply-bar div { height: 100%; width: 0; background: var(--ink);
  }
 @media (prefers-reduced-motion: no-preference) { .supply-bar div { transition: width .6s ease; } }
+.balance { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.balance .supply-num { font-size: 18px; }
 .supply-foot { display: flex; justify-content: space-between; gap: 12px; font-size: 11.5px; color: var(--muted); }
 #op-tabs { margin-bottom: 22px; }
 .warn-note { border-style: dashed; }
@@ -391,6 +393,10 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
           </div>
           <div class="supply-bar" role="progressbar" aria-label="Mint progress" aria-valuemin="0" aria-valuemax="100" id="supply-bar"><div id="supply-fill"></div></div>
           <div class="supply-foot mono"><span id="supply-pct">–</span><span id="supply-left"></span></div>
+        </div>
+        <div class="balance" id="balance">
+          <span class="supply-label">Your balance</span>
+          <span class="supply-num mono" id="bal-num" translate="no">Connect wallet</span>
         </div>
       </div>
       <div id="deploy-fields" hidden>
@@ -619,6 +625,46 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     renderSupply(); updateCta(); scheduleEstimate();
   }
 
+  // Balance of the connected address: its confirmed paid mints x units per mint.
+  let balSeq = 0;
+  function renderBalance(mints, err) {
+    const el = $('bal-num'), T = '$' + TOKEN.tick.toUpperCase();
+    if (!state.account) { el.textContent = 'Connect wallet'; return; }
+    if (err) { el.textContent = 'Unavailable'; return; }
+    if (mints == null) { el.textContent = 'Loading…'; return; }
+    const units = BigInt(mints) * BigInt(TOKEN.lim);
+    el.textContent = `${units.toLocaleString('en-US')} ${T}` + (mints ? ` · ${mints.toLocaleString('en-US')} mint${mints > 1 ? 's' : ''}` : '');
+  }
+  async function loadBalance() {
+    const f = FEES[state.net], acct = state.account, net = state.net, seq = ++balSeq;
+    if (!acct || !f || !isAddr(f.address)) { renderBalance(null); return; }
+    renderBalance(null);
+    const minPrice = ethToWei(f.perMintEth), want = TOKEN.tick.toLowerCase(), me = acct.toLowerCase();
+    try {
+      let next = null, count = 0;
+      for (let page = 0; page < 100; page++) {
+        const qs = new URLSearchParams({ filter: 'from', ...(next || {}) });
+        const res = await fetch(`${NETS[net].explorer}/api/v2/addresses/${acct}/transactions?${qs}`, { headers: { accept: 'application/json' } });
+        if (res.status === 404) break;
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const j = await res.json();
+        for (const tx of j.items || []) {
+          if (tx.status && tx.status !== 'ok') continue;
+          if ((tx.from?.hash || '').toLowerCase() !== me) continue;
+          if ((tx.to?.hash || '').toLowerCase() !== f.address.toLowerCase()) continue;
+          if (BigInt(tx.value || '0') < minPrice) continue;
+          const input = (tx.raw_input || '').toLowerCase();
+          if (!input.startsWith(DATA_PREFIX)) continue;
+          const pu = parseUri(dec.decode(fromHex(input)));
+          if (pu.kind === 'token' && String(pu.o.p).toLowerCase() === 'rsc-20' && pu.o.op === 'mint' && String(pu.o.tick).toLowerCase() === want) count++;
+        }
+        next = j.next_page_params;
+        if (!next) break;
+      }
+      if (seq === balSeq) renderBalance(count);
+    } catch (e) { if (seq === balSeq) renderBalance(null, true); }
+  }
+
   // ---------- Utilities ----------
   const $ = (id) => document.getElementById(id);
   const enc = new TextEncoder();
@@ -748,6 +794,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     updateCta();
     refreshEstimate();
     loadGallery(true);
+    loadBalance();
   }
 
   // ---------- Building the data URI ----------
@@ -935,7 +982,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       setStatus((done ? `${done} of ${n} sent. ` : '') + errMsg(e), 'err');
     } finally {
       state.busy = false; $('stop').hidden = true; updateCta();
-      setTimeout(loadMinted, 8000);
+      setTimeout(() => { loadMinted(); loadBalance(); }, 8000);
     }
   }
 
@@ -1053,7 +1100,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   // ---------- Events ----------
   function setNet(n) {
     state.net = n; store.set('rbs.net', n);
-    state.minted = null; renderSupply(); loadMinted();
+    state.minted = null; renderSupply(); loadMinted(); loadBalance();
     $('net-mainnet').setAttribute('aria-pressed', String(n === 'mainnet'));
     $('net-testnet').setAttribute('aria-pressed', String(n === 'testnet'));
     render(); renderLog();
@@ -1161,7 +1208,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 
   setNet(state.net);
   setCount(1);
-  setInterval(() => { if (!state.busy) loadMinted(); }, 30000);
+  setInterval(() => { if (!state.busy) { loadMinted(); loadBalance(); } }, 30000);
   renderLog();
   tickCountdown();
 })();
