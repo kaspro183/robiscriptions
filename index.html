@@ -373,7 +373,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
         <p class="admin-note warn-note" id="deploy-mismatch" hidden></p>
       </div>
 
-      <div class="field">
+      <div class="field" id="recipient-field">
         <label for="recipient">Recipient</label>
         <input id="recipient" type="text" placeholder="0x… (defaults to your address)" spellcheck="false">
       </div>
@@ -506,6 +506,13 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     if (state.mode === 'token' && $('tok-op').value !== 'mint') return { total: 0n, address: null }; // no fee on deploy / transfer
     const per = ethToWei(isFinalPhase() ? f.finalPerMintEth : f.perMintEth);
     return { total: per * BigInt(n), address: f.address, per };
+  }
+  // A deploy is sent to the dead address: MetaMask refuses data sent to one of your own accounts,
+  // and the deployer is identified by the sender (from), not the receiver.
+  const DEAD = '0x000000000000000000000000000000000000dEaD';
+  function targetAddress() {
+    if (state.mode === 'token' && $('tok-op').value === 'deploy') return DEAD;
+    return $('recipient').value.trim() || state.account;
   }
   const TOTAL_MINTS = Math.floor(Number(TOKEN.max) / Number(TOKEN.lim));
   function isFinalPhase() {
@@ -659,6 +666,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     if (!e) return 'Unknown error.';
     if (e.code === 4001) return 'Signature rejected in the wallet.';
     if (e.code === -32002) return 'A request is already open in your wallet: open it to approve.';
+    if (/internal accounts cannot include data/i.test(e.message || '')) return 'MetaMask blocks inscriptions sent to one of your own MetaMask accounts. Use another wallet (Rabby works) or enter a recipient address that is not in this MetaMask.';
     return (e.shortMessage || e.message || String(e)).slice(0, 200);
   }
 
@@ -770,7 +778,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     try {
       const chain = parseInt(await state.provider.request({ method: 'eth_chainId' }), 16);
       if (chain !== NETS[state.net].chainId) { $('st-gas').textContent = 'wrong network in wallet'; $('st-cost').textContent = '–'; renderFees(null); return; }
-      const to = $('recipient').value.trim() || state.account;
+      const to = targetAddress();
       const data = toHex(enc.encode(uri));
       const [gas, price] = await Promise.all([
         state.provider.request({ method: 'eth_estimateGas', params: [{ from: state.account, to, data, value: '0x0' }] }),
@@ -800,7 +808,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     const err = validate(uri);
     if (err) return setStatus(err, 'err');
     const n = +$('count').value;
-    const to = $('recipient').value.trim() || state.account;
+    const to = targetAddress();
     const data = toHex(enc.encode(uri));
     const fee = feeFor(n);
     state.busy = true; state.stop = false; updateCta();
@@ -809,6 +817,12 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     let done = 0;
     try {
       await ensureChain();
+      // MetaMask refuses data sent to one of its own accounts: stop before any payment is made.
+      const prov = state.provider || {};
+      if (prov.isMetaMask && !prov.isRabby) {
+        const own = (await prov.request({ method: 'eth_accounts' }).catch(() => [])).map((a) => a.toLowerCase());
+        if (own.includes(to.toLowerCase())) throw new Error('External transactions to internal accounts cannot include data');
+      }
       if (fee.address && fee.total > 0n) {
         setStatus('Approve the payment in your wallet.');
         const feeHash = await state.provider.request({
@@ -1044,6 +1058,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     $('tok-op').value = dep ? 'deploy' : 'mint';
     $('deploy-fields').hidden = !dep;
     $('count-field').hidden = dep;
+    $('recipient-field').hidden = dep;
     $('token-mode').textContent = dep ? 'Deploy a token' : 'Now minting';
     if (dep) { setCount(1); syncDeploy(); }
     else {
