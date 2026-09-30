@@ -381,7 +381,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 
       <div class="token-head">
         <p class="eyebrow" id="token-mode">Now minting</p>
-        <h3 class="token-name" id="token-name" translate="no">$ROBI</h3>
+        <h3 class="token-name" id="token-name" translate="no">$•••</h3>
         <dl class="token-facts">
           <div><dt>Protocol</dt><dd class="mono">RSC-20</dd></div>
           <div><dt>Max supply</dt><dd class="mono" id="fact-max">–</dd></div>
@@ -439,7 +439,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
           <button type="button" data-n="100">×100</button>
           <button type="button" data-n="200">×200</button>
         </div>
-        <span class="hint" id="count-hint">Each mint is one transaction: the ETH price and the inscription go together, and the $ROBI go to the wallet that signs. You can stop the batch at any time.</span>
+        <span class="hint" id="count-hint">Each mint is one transaction: the ETH price and the inscription go together, and the tokens go to the wallet that signs. You can stop the batch at any time.</span>
       </div>
       <input id="esip6" type="checkbox" hidden>
     </form>
@@ -518,6 +518,10 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   // ================= TOKEN =================
   // The one RSC-20 token this site mints. Deploy it once by opening the page with #deploy.
   const TOKEN = { tick: 'robi', max: '10000000', lim: '1000' };   // 10,000,000 units, 1,000 per mint = 10,000 mints
+  // Ticker stays hidden on the page (shown as "•••") until LAUNCH_AT. Internal calls (chain reads/writes)
+  // still use the real ticker — this only masks what visitors see before launch.
+  const displayTick = () => (notYet() ? '•••' : TOKEN.tick.toUpperCase());
+  const maskTick = (s) => (notYet() ? s.replace(new RegExp(TOKEN.tick, 'gi'), '•••') : s);
   // ================= FEE CONFIGURATION =================
   // Address that receives the mint price (leave '' to disable).
   // Price in ETH per mint, paid in a single transaction before the batch.
@@ -590,7 +594,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     $('supply-fill').style.width = pct + '%';
     $('supply-bar').setAttribute('aria-valuenow', pct.toFixed(1));
     $('supply-pct').textContent = (pct > 0 && pct < 0.1 ? '< 0.1' : pct.toFixed(pct < 10 ? 1 : 0)) + '%';
-    $('supply-left').textContent = done >= TOTAL_MINTS ? 'Sold out' : `${Number(units).toLocaleString('en-US')} / ${Number(TOKEN.max).toLocaleString('en-US')} $${TOKEN.tick.toUpperCase()}`;
+    $('supply-left').textContent = done >= TOTAL_MINTS ? 'Sold out' : `${Number(units).toLocaleString('en-US')} / ${Number(TOKEN.max).toLocaleString('en-US')} $${displayTick()}`;
   }
 
   // Counts the paid mints: transactions to the mint address that carry this token's mint JSON.
@@ -630,7 +634,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   // Balance of the connected address: its confirmed paid mints x units per mint.
   let balSeq = 0;
   function renderBalance(mints, err) {
-    const el = $('bal-num'), T = '$' + TOKEN.tick.toUpperCase();
+    const el = $('bal-num'), T = '$' + displayTick();
     if (!state.account) { el.textContent = 'Connect wallet'; return; }
     if (err) { el.textContent = 'Unavailable'; return; }
     if (mints == null) { el.textContent = 'Loading…'; return; }
@@ -850,7 +854,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     const uri = currentUri();
     const size = uri ? enc.encode(uri).length : 0;
     const pv = $('uri-preview');
-    pv.textContent = uri ? (uri.length > 1400 ? uri.slice(0, 1400) + ' …' : uri) : '—';
+    pv.textContent = uri ? maskTick(uri.length > 1400 ? uri.slice(0, 1400) + ' …' : uri) : '—';
     $('st-size').textContent = size ? fmtBytes(size) : '–';
     $('st-net').textContent = NETS[state.net].label + ' · ' + NETS[state.net].chainId;
     updateCta();
@@ -866,7 +870,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     const box = $('countdown');
     const left = LAUNCH_AT - Date.now();
     if (left <= 0) {
-      if (!box.hidden) { box.hidden = true; updateCta(); }
+      if (!box.hidden) { box.hidden = true; updateCta(); refreshTickerLabels(); renderSupply(); loadBalance(); render(); }
       return;
     }
     box.hidden = false;
@@ -1167,12 +1171,16 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 
   // ---------- Single-token setup ----------
   const SHOW_DEPLOY = false;   // temporary Deploy tab — set to false to remove it from the site
-  const T = TOKEN.tick.toUpperCase();
   const fmtN = (x) => Number(x).toLocaleString('en-US');
-  $('intro-tick2').textContent = T; $('intro-tick').textContent = '$' + T;
-  $('spec-deploy').textContent = `data:,{"p":"rsc-20","op":"deploy",\n"tick":"${TOKEN.tick}","max":"${TOKEN.max}",\n"lim":"${TOKEN.lim}"}`;
-  $('spec-mint').textContent = `data:,{"p":"rsc-20","op":"mint",\n"tick":"${TOKEN.tick}","amt":"${TOKEN.lim}"}`;
-  $('spec-transfer').textContent = `data:,{"p":"rsc-20","op":"transfer",\n"tick":"${TOKEN.tick}","amt":"500"}`;
+  function refreshTickerLabels() {
+    const T = displayTick();
+    $('intro-tick2').textContent = T; $('intro-tick').textContent = '$' + T;
+    $('spec-deploy').textContent = maskTick(`data:,{"p":"rsc-20","op":"deploy",\n"tick":"${TOKEN.tick}","max":"${TOKEN.max}",\n"lim":"${TOKEN.lim}"}`);
+    $('spec-mint').textContent = maskTick(`data:,{"p":"rsc-20","op":"mint",\n"tick":"${TOKEN.tick}","amt":"${TOKEN.lim}"}`);
+    $('spec-transfer').textContent = maskTick(`data:,{"p":"rsc-20","op":"transfer",\n"tick":"${TOKEN.tick}","amt":"500"}`);
+    if (state.mode === 'token' && $('tok-op').value !== 'deploy') $('token-name').textContent = '$' + T;
+  }
+  refreshTickerLabels();
   $('dep-tick').value = TOKEN.tick; $('dep-max').value = TOKEN.max; $('dep-lim').value = TOKEN.lim;
   $('op-tabs').hidden = !SHOW_DEPLOY;
 
@@ -1185,7 +1193,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     const differs = tick.toLowerCase() !== TOKEN.tick.toLowerCase() || max !== TOKEN.max || lim !== TOKEN.lim;
     const mm = $('deploy-mismatch');
     mm.hidden = !differs;
-    if (differs) mm.textContent = `The Mint tab still mints $${T} (${fmtN(TOKEN.max)} max, ${fmtN(TOKEN.lim)} per mint). Update TOKEN in the script to match this deploy before opening the mint.`;
+    if (differs) mm.textContent = `The Mint tab still mints $${displayTick()} (${fmtN(TOKEN.max)} max, ${fmtN(TOKEN.lim)} per mint). Update TOKEN in the script to match this deploy before opening the mint.`;
   }
   function setOp(op) {
     const dep = op === 'deploy' && SHOW_DEPLOY;
@@ -1198,7 +1206,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     if (dep) { setCount(1); syncDeploy(); }
     else {
       $('tok-tick').value = TOKEN.tick; $('tok-amt').value = TOKEN.lim; $('tok-max').value = TOKEN.max; $('tok-lim').value = TOKEN.lim;
-      $('token-name').textContent = '$' + T;
+      $('token-name').textContent = '$' + displayTick();
       $('fact-max').textContent = fmtN(TOKEN.max); $('fact-lim').textContent = fmtN(TOKEN.lim);
     }
     render();
