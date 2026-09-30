@@ -375,7 +375,36 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     <div class="glance-item"><span class="k">Max supply</span><span class="v" id="glance-max">–</span></div>
     <div class="glance-item"><span class="k">Per mint</span><span class="v" id="glance-lim">–</span></div>
     <div class="glance-item"><span class="k">Total mints</span><span class="v" id="glance-total">–</span></div>
-    <div class="glance-item"><span class="k">Payment</span><span class="v">ETH</span></div>
+    <div class="glance-item"><span class="k">Payment</span><span class="v">ETH · RH</span></div>
+  </section>
+
+  <section class="howwhy" aria-label="How to mint and why it matters">
+    <div class="hw-col">
+      <h2>How to <em>mint</em></h2>
+      <ol class="hw-list">
+        <li><b>Get a wallet.</b> MetaMask or any EVM wallet works.</li>
+        <li><b>Fund it with ETH</b> on Robinhood Chain — this pays for your mint(s) and gas.</li>
+        <li><b>Connect on robiscriptions.com</b> and pick how many mints, up to 200 at once.</li>
+        <li><b>Approve in your wallet.</b> One transaction, no contract, no whitelist.</li>
+      </ol>
+    </div>
+    <div class="hw-col">
+      <h2>Why it <em>matters</em></h2>
+      <ol class="hw-list">
+        <li><b>No contract.</b> The token exists purely as on-chain calldata — the inscription itself is the asset.</li>
+        <li><b>Fully public mint.</b> No team allocation, no presale, no insiders.</li>
+        <li><b>First mover.</b> The first RSC-20 protocol token to mint on Robinhood Chain.</li>
+        <li><b>Verifiable supply.</b> Every mint is a transaction anyone can audit on the explorer.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="spec" aria-labelledby="inscript-title">
+    <div class="sec-head">
+      <h2 id="inscript-title">The <em>inscription</em></h2>
+      <p>What actually gets sent onchain when you mint — the ticker stays hidden until shortly before the mint opens.</p>
+    </div>
+    <pre id="inscript-json" class="inscript-box" translate="no"></pre>
   </section>
 
   <div class="atelier">
@@ -414,7 +443,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
           <div><dt>Protocol</dt><dd class="mono">RSC-20</dd></div>
           <div><dt>Max supply</dt><dd class="mono" id="fact-max">–</dd></div>
           <div><dt>Per mint</dt><dd class="mono" id="fact-lim">–</dd></div>
-          <div><dt>Payment</dt><dd class="mono">ETH</dd></div>
+          <div><dt>Payment</dt><dd class="mono">ETH · RH</dd></div>
         </dl>
         <div class="supply" id="supply">
           <div class="supply-top">
@@ -492,36 +521,6 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       <ul class="log" id="log" translate="no" hidden></ul>
     </aside>
   </div>
-
-  <section class="howwhy" aria-label="How to mint and why it matters">
-    <div class="hw-col">
-      <h2>How to <em>mint</em></h2>
-      <ol class="hw-list">
-        <li><b>Get a wallet.</b> MetaMask or any EVM wallet works.</li>
-        <li><b>Fund it with ETH</b> on Robinhood Chain — this pays for your mint(s) and gas.</li>
-        <li><b>Connect on robiscriptions.com</b> and pick how many mints, up to 200 at once.</li>
-        <li><b>Approve in your wallet.</b> One transaction, no contract, no whitelist.</li>
-      </ol>
-    </div>
-    <div class="hw-col">
-      <h2>Why it <em>matters</em></h2>
-      <ol class="hw-list">
-        <li><b>No contract.</b> The token exists purely as on-chain calldata — the inscription itself is the asset.</li>
-        <li><b>Fully public mint.</b> No team allocation, no presale, no insiders.</li>
-        <li><b>First mover.</b> The first RSC-20 protocol token to mint on Robinhood Chain.</li>
-        <li><b>Verifiable supply.</b> Every mint is a transaction anyone can audit on the explorer.</li>
-      </ol>
-    </div>
-  </section>
-
-  <section class="spec" aria-labelledby="inscript-title">
-    <div class="sec-head">
-      <h2 id="inscript-title">The <em>inscription</em></h2>
-      <p>What actually gets sent onchain when you mint — the ticker stays hidden until shortly before the mint opens.</p>
-    </div>
-    <pre id="inscript-json" class="inscript-box" translate="no"></pre>
-  </section>
-
   <section class="spec" aria-labelledby="spec-title">
     <div class="sec-head">
       <h2 id="spec-title">The <em>RSC-20</em> protocol</h2>
