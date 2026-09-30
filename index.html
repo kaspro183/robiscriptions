@@ -808,8 +808,21 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     try {
       const accts = await provider.request({ method: 'eth_requestAccounts' });
       state.account = accts[0];
-      provider.on?.('accountsChanged', (a) => { state.account = a[0] || null; onAccount(); });
-      provider.on?.('chainChanged', () => { refreshEstimate(); });
+      if (!state.acctListener) {
+        state.acctListener = true;
+        provider.on?.('accountsChanged', async (a) => {
+          // Some wallets (MetaMask, Rabby...) briefly report an empty account list while their
+          // popup opens or closes around a transaction approval. That is not a real disconnect,
+          // so before dropping the session we double-check with a direct eth_accounts read.
+          let next = a && a[0];
+          if (!next) {
+            try { const check = await provider.request({ method: 'eth_accounts' }); next = check && check[0]; } catch {}
+          }
+          state.account = next || null;
+          onAccount();
+        });
+        provider.on?.('chainChanged', () => { refreshEstimate(); });
+      }
       await ensureChain();
       onAccount();
     } catch (e) {
