@@ -636,9 +636,14 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   };
 
   // ---------- Wallet discovery (EIP-6963 + window.ethereum fallback) ----------
+  function isPhantom(provider, info) {
+    const tag = `${info?.name || ''} ${info?.rdns || ''}`.toLowerCase();
+    return !!(provider && provider.isPhantom) || tag.includes('phantom');
+  }
   window.addEventListener('eip6963:announceProvider', (e) => {
     const d = e.detail;
     if (!d || !d.provider || state.providers.some((p) => p.info.uuid === d.info.uuid)) return;
+    if (isPhantom(d.provider, d.info)) return;   // Phantom is not offered on this site
     state.providers.push(d);
   });
   window.dispatchEvent(new Event('eip6963:requestProvider'));
@@ -646,7 +651,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   function pickProvider() {
     return new Promise((resolve) => {
       const list = state.providers.slice();
-      if (!list.length && window.ethereum) list.push({ info: { name: 'Browser wallet', uuid: 'legacy' }, provider: window.ethereum });
+      if (!list.length && window.ethereum && !isPhantom(window.ethereum)) list.push({ info: { name: 'Browser wallet', uuid: 'legacy' }, provider: window.ethereum });
       if (!list.length) return resolve(null);
       if (list.length === 1) return resolve(list[0].provider);
       const box = $('wallet-pick');
@@ -665,7 +670,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 
   async function connect() {
     const provider = await pickProvider();
-    if (!provider) { setStatus('No EVM wallet detected. Install MetaMask, Rabby or a compatible wallet, then reload the page.', 'err'); return; }
+    if (!provider) { setStatus('No supported wallet detected. Install MetaMask, Rabby, OKX Wallet or Coinbase Wallet, then reload the page. Phantom is not supported.', 'err'); return; }
     state.provider = provider;
     try {
       const accts = await provider.request({ method: 'eth_requestAccounts' });
