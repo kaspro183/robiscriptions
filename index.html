@@ -281,6 +281,15 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 @media (max-width: 520px) { .token-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .admin-note { border: 1px solid var(--ink); padding: 12px 14px; font-size: 13px; margin: 0 0 22px; }
 #intro-tick { color: var(--ink); font-weight: 700; }
+.supply { margin-top: 24px; display: grid; gap: 10px; }
+.supply-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.supply-label { font: 500 10.5px var(--f-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.supply-num { font-size: 14px; color: var(--ink); }
+.supply-bar { height: 12px; border: 1px solid var(--ink); background: transparent; overflow: hidden; padding: 2px; }
+.supply-bar div { height: 100%; width: 0; background: var(--ink);
+ }
+@media (prefers-reduced-motion: no-preference) { .supply-bar div { transition: width .6s ease; } }
+.supply-foot { display: flex; justify-content: space-between; gap: 12px; font-size: 11.5px; color: var(--muted); }
 #op-tabs { margin-bottom: 22px; }
 .warn-note { border-style: dashed; }
 .stats dt { padding-right: 16px; }
@@ -353,6 +362,14 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
           <div><dt>Per mint</dt><dd class="mono" id="fact-lim">–</dd></div>
           <div><dt>Payment</dt><dd class="mono">ETH</dd></div>
         </dl>
+        <div class="supply" id="supply">
+          <div class="supply-top">
+            <span class="supply-label">Minted</span>
+            <span class="supply-num mono" id="supply-num">Loading…</span>
+          </div>
+          <div class="supply-bar" role="progressbar" aria-label="Mint progress" aria-valuemin="0" aria-valuemax="100" id="supply-bar"><div id="supply-fill"></div></div>
+          <div class="supply-foot mono"><span id="supply-pct">–</span><span id="supply-left"></span></div>
+        </div>
       </div>
       <div id="deploy-fields" hidden>
         <div class="row">
@@ -520,6 +537,19 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     return state.minted != null && f.finalMints > 0 && state.minted >= TOTAL_MINTS - f.finalMints;
   }
 
+  function renderSupply() {
+    const m = state.minted;
+    if (m == null) { $('supply-num').textContent = 'Loading…'; return; }
+    const done = Math.min(m, TOTAL_MINTS);
+    const pct = TOTAL_MINTS ? (done / TOTAL_MINTS) * 100 : 0;
+    const units = BigInt(done) * BigInt(TOKEN.lim);
+    $('supply-num').textContent = `${done.toLocaleString('en-US')} / ${TOTAL_MINTS.toLocaleString('en-US')} mints`;
+    $('supply-fill').style.width = pct + '%';
+    $('supply-bar').setAttribute('aria-valuenow', pct.toFixed(1));
+    $('supply-pct').textContent = (pct > 0 && pct < 0.1 ? '< 0.1' : pct.toFixed(pct < 10 ? 1 : 0)) + '%';
+    $('supply-left').textContent = done >= TOTAL_MINTS ? 'Sold out' : `${Number(units).toLocaleString('en-US')} / ${Number(TOKEN.max).toLocaleString('en-US')} $${TOKEN.tick.toUpperCase()}`;
+  }
+
   // Rebuilds the number of mints sold from the payments received by the fee address.
   async function loadMinted() {
     const f = FEES[state.net];
@@ -556,7 +586,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     } catch (e) {
       if (state.net === net && state.minted == null) state.minted = 0;
     }
-    updateCta(); scheduleEstimate();
+    renderSupply(); updateCta(); scheduleEstimate();
   }
 
   // ---------- Utilities ----------
@@ -966,7 +996,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   // ---------- Events ----------
   function setNet(n) {
     state.net = n; store.set('rbs.net', n);
-    state.minted = null; loadMinted();
+    state.minted = null; renderSupply(); loadMinted();
     $('net-mainnet').setAttribute('aria-pressed', String(n === 'mainnet'));
     $('net-testnet').setAttribute('aria-pressed', String(n === 'testnet'));
     render(); renderLog();
@@ -1075,6 +1105,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 
   setNet(state.net);
   setCount(1);
+  setInterval(() => { if (!state.busy) loadMinted(); }, 30000);
   renderLog();
 })();
 </script>
