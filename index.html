@@ -319,6 +319,13 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 .warn-note { border-style: dashed; }
 .stats dt { padding-right: 16px; }
 @media (max-width: 520px) { .stats { grid-template-columns: 1fr; } .stats dt { border-bottom: 0; padding-bottom: 0; } .stats dd { text-align: left; padding-top: 2px; } .stats dt.total { padding-top: 16px; } }
+.glance { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); margin: 0 0 56px; }
+.glance-item { padding: 22px 20px 22px 0; border-left: 1px solid var(--line); }
+.glance-item:first-child { border-left: none; padding-left: 0; }
+.glance-item .k { display: block; font: 500 10.5px var(--f-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.glance-item .v { font: 400 clamp(22px, 3vw, 30px)/1 var(--f-display); letter-spacing: -.01em; color: var(--ink); }
+@media (max-width: 700px) { .glance { grid-template-columns: repeat(2, 1fr); } .glance-item:nth-child(2n+1) { border-left: none; } .glance-item:nth-child(n+3) { border-top: 1px solid var(--line); padding-top: 18px; } }
+.inscript-box { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px 22px; overflow-x: auto; font: 13px/1.7 var(--f-mono); color: var(--ink); }
 </style>
 </head>
 <body>
@@ -364,6 +371,13 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     </div>
   </div>
 
+  <section class="glance" aria-label="At a glance">
+    <div class="glance-item"><span class="k">Max supply</span><span class="v" id="glance-max">–</span></div>
+    <div class="glance-item"><span class="k">Per mint</span><span class="v" id="glance-lim">–</span></div>
+    <div class="glance-item"><span class="k">Total mints</span><span class="v" id="glance-total">–</span></div>
+    <div class="glance-item"><span class="k">Payment</span><span class="v">ETH</span></div>
+  </section>
+
   <div class="atelier">
     <form class="panel" id="composer" autocomplete="off">
       <!-- Single-token site: text / image tabs and free-form token fields stay in the page but are hidden. -->
@@ -395,7 +409,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       <div class="token-head">
         <p class="eyebrow" id="token-mode">Now minting</p>
         <h3 class="token-name" id="token-name" translate="no">$•••</h3>
-        <p class="tick-hint" id="tick-hint">Ticker revealed when the mint opens.</p>
+        <p class="tick-hint" id="tick-hint">Ticker revealed a few minutes before mint.</p>
         <dl class="token-facts">
           <div><dt>Protocol</dt><dd class="mono">RSC-20</dd></div>
           <div><dt>Max supply</dt><dd class="mono" id="fact-max">–</dd></div>
@@ -500,6 +514,14 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     </div>
   </section>
 
+  <section class="spec" aria-labelledby="inscript-title">
+    <div class="sec-head">
+      <h2 id="inscript-title">The <em>inscription</em></h2>
+      <p>What actually gets sent onchain when you mint — the ticker stays hidden until shortly before the mint opens.</p>
+    </div>
+    <pre id="inscript-json" class="inscript-box" translate="no"></pre>
+  </section>
+
   <section class="spec" aria-labelledby="spec-title">
     <div class="sec-head">
       <h2 id="spec-title">The <em>RSC-20</em> protocol</h2>
@@ -555,8 +577,8 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   const TOKEN = { tick: 'robi', max: '10000000', lim: '1000' };   // 10,000,000 units, 1,000 per mint = 10,000 mints
   // Ticker stays hidden on the page (shown as "•••") until LAUNCH_AT. Internal calls (chain reads/writes)
   // still use the real ticker — this only masks what visitors see before launch.
-  const displayTick = () => (notYet() ? '•••' : TOKEN.tick.toUpperCase());
-  const maskTick = (s) => (notYet() ? s.replace(new RegExp(TOKEN.tick, 'gi'), '•••') : s);
+  const displayTick = () => (tickHidden() ? '•••' : TOKEN.tick.toUpperCase());
+  const maskTick = (s) => (tickHidden() ? s.replace(new RegExp(TOKEN.tick, 'gi'), '•••') : s);
   // ================= FEE CONFIGURATION =================
   // Address that receives the mint price (leave '' to disable).
   // Price in ETH per mint, paid in a single transaction before the batch.
@@ -899,13 +921,18 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   // ---------- Launch countdown ----------
   // Mint opens 30 Sep 2026 at 17:00 Paris time (CEST, UTC+2). Set to 0 to open immediately.
   const LAUNCH_AT = Date.parse('2026-09-30T17:00:00+02:00');
+  // The ticker itself is revealed a bit earlier than the mint, so early visitors can find the site
+  // and get ready without being able to mint (or tell anyone the ticker) ahead of time.
+  const REVEAL_AT = LAUNCH_AT - 5 * 60 * 1000;
   const pad2 = (x) => String(x).padStart(2, '0');
   const notYet = () => Date.now() < LAUNCH_AT;
+  const tickHidden = () => Date.now() < REVEAL_AT;
   function tickCountdown() {
     const box = $('countdown');
     const left = LAUNCH_AT - Date.now();
+    refreshTickerLabels();
     if (left <= 0) {
-      if (!box.hidden) { box.hidden = true; updateCta(); refreshTickerLabels(); renderSupply(); loadBalance(); render(); }
+      if (!box.hidden) { box.hidden = true; updateCta(); renderSupply(); loadBalance(); render(); }
       return;
     }
     box.hidden = false;
@@ -1213,10 +1240,14 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     $('spec-deploy').textContent = maskTick(`data:,{"p":"rsc-20","op":"deploy",\n"tick":"${TOKEN.tick}","max":"${TOKEN.max}",\n"lim":"${TOKEN.lim}"}`);
     $('spec-mint').textContent = maskTick(`data:,{"p":"rsc-20","op":"mint",\n"tick":"${TOKEN.tick}","amt":"${TOKEN.lim}"}`);
     $('spec-transfer').textContent = maskTick(`data:,{"p":"rsc-20","op":"transfer",\n"tick":"${TOKEN.tick}","amt":"500"}`);
+    $('inscript-json').textContent = maskTick(`{"p":"rsc-20",\n "op":"mint",\n "tick":"${TOKEN.tick}",\n "amt":"${TOKEN.lim}"}`);
     if (state.mode === 'token' && $('tok-op').value !== 'deploy') $('token-name').textContent = '$' + T;
-    $('tick-hint').hidden = !notYet();
+    $('tick-hint').hidden = !tickHidden();
   }
   refreshTickerLabels();
+  $('glance-max').textContent = fmtN(TOKEN.max);
+  $('glance-lim').textContent = fmtN(TOKEN.lim);
+  $('glance-total').textContent = fmtN(TOTAL_MINTS);
   $('dep-tick').value = TOKEN.tick; $('dep-max').value = TOKEN.max; $('dep-lim').value = TOKEN.lim;
   $('op-tabs').hidden = !SHOW_DEPLOY;
 
