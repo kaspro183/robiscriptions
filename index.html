@@ -221,15 +221,19 @@ section.spec { margin-top: 96px; }
 .op h3 .mono { color: var(--gold); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
 .op p { font-size: 13.5px; color: var(--muted); margin: 0 0 16px; }
 .op pre { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font: 12px/1.65 var(--f-mono); color: var(--ink); }
-.phases { display: flex; flex-direction: column; }
-.phase-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
-.phase-row:last-child { border-bottom: none; }
-.phase-row .n { font: 500 14.5px var(--f-body); color: var(--ink); }
-.phase-row .d { font: 500 12px var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.phase-row .p { font: 500 14px var(--f-mono); color: var(--ink); }
-@media (max-width: 560px) { .phase-row { flex-wrap: wrap; } .phase-row .d { order: 3; width: 100%; } }
 .tick-hint { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
 .tick-hint[hidden] { display: none; }
+.howwhy { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.hw-col { padding: 40px 40px 40px 0; }
+.hw-col + .hw-col { border-left: 1px solid var(--line); padding-left: 40px; padding-right: 0; }
+.hw-col h2 { font: 400 clamp(24px, 3vw, 32px)/1 var(--f-display); margin: 0 0 22px; letter-spacing: -.015em; }
+.hw-col h2 em { color: var(--gold); }
+.hw-list { list-style: none; counter-reset: hw; margin: 0; padding: 0; }
+.hw-list li { counter-increment: hw; display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--muted); line-height: 1.5; }
+.hw-list li:last-child { border-bottom: none; }
+.hw-list li::before { content: counter(hw); flex: none; width: 24px; height: 24px; border: 1px solid var(--line-strong); border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 500 11px var(--f-mono); color: var(--ink); margin-top: 1px; }
+.hw-list b { display: block; color: var(--ink); font-weight: 500; }
+@media (max-width: 820px) { .howwhy { grid-template-columns: 1fr; } .hw-col, .hw-col + .hw-col { padding: 28px 0; border-left: 0; } .hw-col + .hw-col { border-top: 1px solid var(--line); } }
 
 /* ---------- collection ---------- */
 section.galerie { margin-top: 96px; }
@@ -475,12 +479,25 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     </aside>
   </div>
 
-  <section class="phases-sec" aria-labelledby="phases-title">
-    <div class="sec-head">
-      <h2 id="phases-title">Mint <em>phases</em></h2>
-      <p>Every mint costs ETH. The price is not shown ahead of time — approve the amount in your wallet.</p>
+  <section class="howwhy" aria-label="How to mint and why it matters">
+    <div class="hw-col">
+      <h2>How to <em>mint</em></h2>
+      <ol class="hw-list">
+        <li><b>Get a wallet.</b> MetaMask or any EVM wallet works.</li>
+        <li><b>Fund it with ETH</b> on Robinhood Chain — this pays for your mint(s) and gas.</li>
+        <li><b>Connect on robiscriptions.com</b> and pick how many mints, up to 200 at once.</li>
+        <li><b>Approve in your wallet.</b> One transaction, no contract, no whitelist.</li>
+      </ol>
     </div>
-    <div class="phases" id="phases"></div>
+    <div class="hw-col">
+      <h2>Why it <em>matters</em></h2>
+      <ol class="hw-list">
+        <li><b>No contract.</b> The token exists purely as on-chain calldata — the inscription itself is the asset.</li>
+        <li><b>Fully public mint.</b> No team allocation, no presale, no insiders.</li>
+        <li><b>First mover.</b> The first RSC-20 protocol token to mint on Robinhood Chain.</li>
+        <li><b>Verifiable supply.</b> Every mint is a transaction anyone can audit on the explorer.</li>
+      </ol>
+    </div>
   </section>
 
   <section class="spec" aria-labelledby="spec-title">
@@ -1124,7 +1141,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   // ---------- Events ----------
   function setNet(n) {
     state.net = n; store.set('rbs.net', n);
-    state.minted = null; renderSupply(); loadMinted(); loadBalance(); renderPhases();
+    state.minted = null; renderSupply(); loadMinted(); loadBalance();
     $('net-mainnet').setAttribute('aria-pressed', String(n === 'mainnet'));
     $('net-testnet').setAttribute('aria-pressed', String(n === 'testnet'));
     render(); renderLog();
@@ -1200,29 +1217,6 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     $('tick-hint').hidden = !notYet();
   }
   refreshTickerLabels();
-
-  // ---------- Mint phases (no prices shown; per-mint price stays private) ----------
-  function renderPhases() {
-    const f = FEES[state.net];
-    const box = $('phases'); box.replaceChildren();
-    const rows = [];
-    if (f && f.finalMints > 0 && f.finalMints < TOTAL_MINTS) {
-      const cut = TOTAL_MINTS - f.finalMints;
-      rows.push([`Mints 1 – ${cut.toLocaleString('en-US')}`, 'Standard phase', 'Paid in ETH']);
-      rows.push([`Mints ${(cut + 1).toLocaleString('en-US')} – ${TOTAL_MINTS.toLocaleString('en-US')}`, 'Final phase', 'Paid in ETH']);
-    } else {
-      rows.push([`Mints 1 – ${TOTAL_MINTS.toLocaleString('en-US')}`, 'Single phase', 'Paid in ETH']);
-    }
-    rows.push([`${TOTAL_MINTS.toLocaleString('en-US')} / ${TOTAL_MINTS.toLocaleString('en-US')}`, 'Sold out', 'Supply fixed forever']);
-    for (const [n, d, p] of rows) {
-      const row = document.createElement('div'); row.className = 'phase-row';
-      const a = document.createElement('span'); a.className = 'n'; a.textContent = n;
-      const b = document.createElement('span'); b.className = 'd'; b.textContent = d;
-      const c = document.createElement('span'); c.className = 'p mono'; c.textContent = p;
-      row.append(a, b, c); box.append(row);
-    }
-  }
-  renderPhases();
   $('dep-tick').value = TOKEN.tick; $('dep-max').value = TOKEN.max; $('dep-lim').value = TOKEN.lim;
   $('op-tabs').hidden = !SHOW_DEPLOY;
 
