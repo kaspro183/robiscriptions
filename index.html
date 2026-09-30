@@ -2,22 +2,1330 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<title>Robiscriptions — Offline</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Robiscriptions</title>
+<meta name="description" content="Robiscriptions — the first inscriptions on Robinhood Chain. Deploy, mint and transfer RSC-20 tokens straight from your wallet.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-  html, body { margin: 0; height: 100%; background: #000; color: #fff; font-family: -apple-system, "Archivo", Arial, sans-serif; }
-  .wrap { min-height: 100%; display: grid; place-items: center; padding: 24px; text-align: center; }
-  h1 { font-size: clamp(28px, 6vw, 48px); letter-spacing: -.03em; margin: 0 0 14px; text-transform: uppercase; }
-  p { color: #9a9a9a; max-width: 46ch; margin: 0 auto; font-size: 15px; line-height: 1.6; }
+/* Layout: night-time publishing house — thin bar, large serif headline, two-column studio
+   (compose | order slip), protocol in three steps, collection grid. Dark by default. */
+:root {
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --raised: #111111;
+  --ink: #ffffff;
+  --muted: #9a9a9a;
+  --faint: #5c5c5c;
+  --line: #1f1f1f;
+  --line-strong: #3a3a3a;
+  --gold: #ffffff;        /* accent = pure white */
+  --gold-soft: rgba(255, 255, 255, .08);
+  --on-gold: #000000;
+  --ok: #ffffff;
+  --warn: #bdbdbd;
+  --err: #ffffff;
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #ffffff; --surface: #fafafa; --raised: #ffffff; --ink: #000000; --muted: #666666; --faint: #a3a3a3;
+    --line: #e6e6e6; --line-strong: #c7c7c7; --gold: #000000; --gold-soft: rgba(0, 0, 0, .05); --on-gold: #ffffff;
+    --ok: #000000; --warn: #555555; --err: #000000;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #ffffff; --surface: #fafafa; --raised: #ffffff; --ink: #000000; --muted: #666666; --faint: #a3a3a3;
+  --line: #e6e6e6; --line-strong: #c7c7c7; --gold: #000000; --gold-soft: rgba(0, 0, 0, .05); --on-gold: #ffffff;
+  --ok: #000000; --warn: #555555; --err: #000000;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 400 15px/1.6 var(--f-body); letter-spacing: -.005em;
+  -webkit-font-smoothing: antialiased;
+  padding-inline: 20px; padding-block: 0 64px;
+}
+.wrap { max-width: 1160px; margin: 0 auto; }
+.mono { font-family: var(--f-mono); font-size: 12.5px; letter-spacing: 0; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .drop:focus-visible {
+  outline: 1px solid var(--gold); outline-offset: 3px;
+}
+
+/* ---------- top bar ---------- */
+header.top {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px;
+  padding-block: 22px; border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.brand h1 { font: 400 30px/1 var(--f-display); margin: 0; letter-spacing: -.01em; }
+.brand h1 em { color: var(--gold); }
+.brand .sub { font: 500 10.5px var(--f-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
+.top-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 999px; padding: 3px; }
+.seg button {
+  border: 0; background: transparent; color: var(--muted); padding: 6px 14px; border-radius: 999px;
+  font: 500 12px var(--f-body); letter-spacing: .04em; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid var(--gold); background: var(--gold); color: var(--on-gold);
+  padding: 10px 20px; border-radius: 999px;
+  font: 500 13px var(--f-body); letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+}
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+.btn.ghost:hover { border-color: var(--gold); }
+.btn:disabled { opacity: .38; cursor: not-allowed; }
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .seg button, .presets button, .tabs button { transition: background-color .18s, color .18s, border-color .18s, opacity .18s; }
+}
+.wallets { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; justify-content: flex-end; }
+.wallets button img { width: 16px; height: 16px; }
+
+.nav { display: flex; gap: 26px; align-items: center; }
+.nav a { color: var(--muted); text-decoration: none; font: 500 13px var(--f-body); letter-spacing: .04em; padding-block: 4px; border-bottom: 1px solid transparent; display: inline-flex; gap: 8px; align-items: center; }
+.nav a:hover { color: var(--ink); }
+.nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--gold); }
+.nav a.nav-x { padding: 0; margin-inline: -8px; }
+.soon { font: 500 9px var(--f-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--gold); border: 1px solid var(--gold); border-radius: 999px; padding: 2px 6px; }
+@media (max-width: 720px) { header.top { gap: 12px 20px; } .nav { order: 3; width: 100%; } }
+
+/* ---------- hero ---------- */
+.intro { padding-block: 64px 44px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 40px; align-items: end; }
+@media (max-width: 820px) { .intro { grid-template-columns: 1fr; gap: 20px; padding-block: 40px 28px; } }
+.intro .eyebrow, .eyebrow { font: 500 11px var(--f-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin: 0 0 18px; }
+.intro h2 { font: 400 clamp(40px, 6.4vw, 76px)/1.02 var(--f-display); margin: 0; letter-spacing: -.02em; text-wrap: balance; }
+.intro h2 em { color: var(--gold); }
+.intro p { margin: 0; color: var(--muted); max-width: 46ch; font-size: 15.5px; }
+.intro p .mono { color: var(--ink); }
+.countdown { border: 1px solid var(--line-strong); border-radius: 14px; padding: 26px 28px; margin: 0 0 28px; display: flex; flex-wrap: wrap; gap: 20px 40px; align-items: center; justify-content: space-between; }
+.countdown[hidden] { display: none; }
+.countdown .cd-label { font: 500 11px var(--f-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.countdown .cd-when { font: 400 15px var(--f-body); color: var(--ink); margin: 0; }
+.cd-grid { display: flex; gap: 14px; }
+.cd-cell { text-align: center; min-width: 68px; }
+.cd-cell b { display: block; font: 400 clamp(34px, 7vw, 52px)/1 var(--f-display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.cd-cell span { font: 500 10px var(--f-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+@media (max-width: 560px) { .countdown { padding: 20px 16px; } .cd-grid { gap: 8px; width: 100%; justify-content: space-between; } .cd-cell { min-width: 0; } }
+
+/* ---------- studio ---------- */
+.atelier { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 880px) { .atelier { grid-template-columns: 1fr; } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px; min-width: 0; }
+@media (max-width: 520px) { .panel { padding: 20px; } }
+.panel h3 { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .2em; color: var(--muted); margin: 0 0 16px; }
+
+.tabs { display: flex; gap: 28px; border-bottom: 1px solid var(--line); margin-bottom: 26px; flex-wrap: wrap; }
+.tabs button {
+  border: 0; background: none; padding: 0 0 12px; color: var(--muted); cursor: pointer;
+  font: 400 22px/1 var(--f-display); border-bottom: 1px solid transparent; margin-bottom: -1px;
+}
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--gold); }
+
+.field { display: grid; gap: 8px; margin-bottom: 20px; min-width: 0; }
+.field label, .count-head label {
+  font: 500 11px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+}
+.hint, .note { font-size: 12.5px; color: var(--muted); margin: 0; }
+input[type=text], input[type=number], textarea, select {
+  width: 100%; background: transparent; color: var(--ink);
+  border: 0; border-bottom: 1px solid var(--line-strong); border-radius: 0;
+  padding: 8px 0 10px; font: 400 17px var(--f-body);
+}
+input[type=text]:focus, input[type=number]:focus, textarea:focus, select:focus { border-bottom-color: var(--gold); outline: none; }
+input::placeholder, textarea::placeholder { color: var(--faint); }
+select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 10px) 55%, calc(100% - 5px) 55%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 22px; }
+select option { background: var(--raised); color: var(--ink); }
+textarea { min-height: 120px; resize: vertical; border: 1px solid var(--line-strong); border-radius: 8px; padding: 12px 14px; }
+input.locked { color: var(--gold); font-family: var(--f-mono); font-size: 15px; cursor: default; }
+#recipient { font-family: var(--f-mono); font-size: 14px; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0 24px; }
+.check { display: flex; gap: 10px; align-items: center; font: 400 14px var(--f-body) !important; letter-spacing: 0 !important; text-transform: none !important; color: var(--ink) !important; cursor: pointer; }
+.check input { accent-color: var(--gold); width: 16px; height: 16px; margin: 0; }
+.drop { border: 1px dashed var(--line-strong); border-radius: 10px; padding: 28px 18px; text-align: center; color: var(--muted); cursor: pointer; }
+.drop.over { border-color: var(--gold); color: var(--ink); background: var(--gold-soft); }
+.drop img { max-height: 180px; margin: 0 auto 10px; display: block; image-rendering: pixelated; }
+
+/* slider */
+.count-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.count-head input#count {
+  width: 120px; flex: none; text-align: right; border: 0; padding: 0;
+  font: 400 44px/1 var(--f-display); color: var(--ink); -moz-appearance: textfield;
+}
+.count-head input#count::-webkit-outer-spin-button, .count-head input#count::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 26px; background: transparent; cursor: pointer; margin: 4px 0 0; --fill: 0%; }
+input[type=range]::-webkit-slider-runnable-track { height: 2px; background: linear-gradient(to right, var(--gold) var(--fill), var(--line-strong) var(--fill)); }
+input[type=range]::-moz-range-track { height: 2px; background: var(--line-strong); }
+input[type=range]::-moz-range-progress { height: 2px; background: var(--gold); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--bg); border: 1px solid var(--gold); box-shadow: 0 0 0 4px var(--gold-soft); margin-top: -8px; }
+input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--bg); border: 1px solid var(--gold); box-shadow: 0 0 0 4px var(--gold-soft); }
+.ticks { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--faint); }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.presets button {
+  border: 1px solid var(--line-strong); background: transparent; color: var(--muted); border-radius: 999px;
+  padding: 5px 14px; font: 400 12px var(--f-mono); cursor: pointer;
+}
+.presets button:hover { color: var(--ink); }
+.presets button[aria-pressed="true"] { color: var(--gold); border-color: var(--gold); background: var(--gold-soft); }
+
+/* order slip */
+aside.panel { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); background: var(--raised); }
+@media (max-width: 880px) { aside.panel { position: static; } }
+.scroll { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow: auto; max-height: 200px; word-break: break-all; white-space: pre-wrap; color: var(--gold); line-height: 1.6; }
+.stats { display: grid; grid-template-columns: auto 1fr; margin: 22px 0; font-size: 13.5px; }
+.stats dt, .stats dd { padding-block: 9px; border-bottom: 1px solid var(--line); margin: 0; }
+.stats dt { color: var(--muted); }
+.stats dd { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--f-mono); font-size: 12.5px; }
+.stats .total { border-bottom: 0; padding-top: 16px; color: var(--ink); }
+.stats dt.total { font: 400 22px/1 var(--f-display); }
+.stats dd.total { font: 500 16px var(--f-mono); color: var(--gold); }
+.cta { display: grid; gap: 12px; }
+.cta #inscribe { width: 100%; padding-block: 15px; font-size: 13.5px; }
+.warn { color: var(--warn); } .err { color: var(--err); }
+.progress { height: 2px; background: var(--line-strong); overflow: hidden; }
+.progress div { height: 100%; width: 0; background: var(--gold); transition: width .25s; }
+
+.log { list-style: none; padding: 0; margin: 18px 0 0; display: grid; }
+.log li { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12.5px; border-top: 1px solid var(--line); padding-block: 10px; }
+.log a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
+.log a:hover { border-color: var(--gold); }
+.pill { font: 500 10px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pill.pending { color: var(--warn); } .pill.ok { color: var(--ok); } .pill.fail { color: var(--err); }
+
+/* ---------- protocol ---------- */
+section.spec { margin-top: 96px; }
+.sec-head { display: flex; justify-content: space-between; align-items: end; gap: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 18px; margin-bottom: 8px; }
+.sec-head h2 { font: 400 clamp(32px, 4vw, 44px)/1 var(--f-display); margin: 0; letter-spacing: -.015em; }
+.sec-head h2 em { color: var(--gold); }
+.sec-head p { color: var(--muted); margin: 0; max-width: 44ch; font-size: 14px; }
+.ops { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 820px) { .ops { grid-template-columns: 1fr; } }
+.op { padding: 28px 28px 28px 0; min-width: 0; }
+.op + .op { border-left: 1px solid var(--line); padding-left: 28px; }
+@media (max-width: 820px) { .op, .op + .op { border-left: 0; padding: 24px 0; border-top: 1px solid var(--line); } .op:first-child { border-top: 0; } }
+.op .num { font: italic 400 40px/1 var(--f-display); color: var(--gold); display: block; margin-bottom: 14px; }
+.op h3 { font: 500 16px var(--f-body); margin: 0 0 6px; display: flex; gap: 10px; align-items: baseline; }
+.op h3 .mono { color: var(--gold); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+.op p { font-size: 13.5px; color: var(--muted); margin: 0 0 16px; }
+.op pre { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font: 12px/1.65 var(--f-mono); color: var(--ink); }
+.tick-hint { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
+.tick-hint[hidden] { display: none; }
+.howwhy { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.hw-col { padding: 40px 40px 40px 0; }
+.hw-col + .hw-col { border-left: 1px solid var(--line); padding-left: 40px; padding-right: 0; }
+.hw-col h2 { font: 800 14px/1 var(--f-mono); letter-spacing: .16em; text-transform: uppercase; margin: 0 0 20px; padding-bottom: 12px; border-bottom: 1.5px solid var(--ink); color: var(--ink); }
+.hw-col h2 em { font-style: normal; color: var(--ink); }
+.hw-list { list-style: none; counter-reset: hw; margin: 0; padding: 0; }
+.hw-list li { counter-increment: hw; display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--muted); line-height: 1.5; }
+.hw-list li:last-child { border-bottom: none; }
+.hw-list li::before { content: counter(hw); flex: none; width: 24px; height: 24px; border: 1px solid var(--line-strong); border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 500 11px var(--f-mono); color: var(--ink); margin-top: 1px; }
+.hw-list b { display: block; color: var(--ink); font-weight: 500; }
+@media (max-width: 820px) { .howwhy { grid-template-columns: 1fr; } .hw-col, .hw-col + .hw-col { padding: 28px 0; border-left: 0; } .hw-col + .hw-col { border-top: 1px solid var(--line); } }
+
+/* ---------- collection ---------- */
+section.galerie { margin-top: 96px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; margin-top: 28px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.card:hover { border-color: var(--line-strong); }
+.card .view { aspect-ratio: 1; max-width: 100%; display: grid; place-items: center; overflow: hidden; padding: 18px;
+  background: radial-gradient(120% 90% at 50% 0%, var(--gold-soft), transparent 70%), var(--raised); }
+.card .view img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.card .view pre { margin: 0; font: 400 15px/1.45 var(--f-display); white-space: pre-wrap; word-break: break-word; max-height: 100%; overflow: hidden; text-align: center; }
+.card .tok { text-align: center; display: grid; gap: 6px; justify-items: center; }
+.card .tok small { font: 500 9.5px var(--f-mono); letter-spacing: .2em; color: var(--gold); border: 1px solid var(--gold); padding: 3px 8px; border-radius: 999px; }
+.card .tok b { font: 400 40px/1 var(--f-display); letter-spacing: -.01em; }
+.card .tok span { color: var(--muted); }
+.card .meta { padding: 12px 16px; display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--muted); border-top: 1px solid var(--line); }
+.card .meta a { color: var(--ink); text-decoration: none; }
+.card .meta a:hover { color: var(--gold); }
+.empty { color: var(--muted); padding: 32px 0; max-width: 60ch; }
+#gal-more { margin-top: 20px; }
+
+footer { margin-top: 96px; color: var(--faint); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 22px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+footer .brandmark { font: 400 20px var(--f-display); color: var(--muted); }
+
+/* ---------- black & white type system: Archivo expanded for display ---------- */
+.brand h1, .intro h2, .tabs button, .count-head input#count, .stats dt.total, .sec-head h2, .op .num,
+.card .tok b, footer .brandmark, .soon-hero h2, .veil span, .promise h3, td.tick {
+  font-family: var(--f-display); font-stretch: 125%; font-style: normal;
+}
+.brand h1 { font-size: 20px; font-weight: 800; letter-spacing: -.02em; text-transform: uppercase; }
+.brand h1 em { font-style: normal; font-weight: 300; color: var(--ink); }
+.intro h2, .soon-hero h2 { font-weight: 800; letter-spacing: -.045em; line-height: .95; text-transform: uppercase; }
+.intro h2 { font-size: clamp(24px, 4.1vw, 52px); }
+.intro { grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); }
+@media (max-width: 820px) { .intro { grid-template-columns: 1fr; } }
+.soon-hero h2 { font-size: clamp(28px, 7vw, 92px); overflow-wrap: anywhere; }
+.intro h2 em, .soon-hero h2 em, .sec-head h2 em {
+  font-style: normal; color: transparent; -webkit-text-stroke: 1.2px var(--ink);
+}
+.intro h2 em.chain-color { color: #D2FF05; -webkit-text-stroke: 0; }
+.sec-head h2 em { color: #D2FF05; -webkit-text-stroke: 0; }
+.sec-head h2 { font-weight: 800; font-size: clamp(26px, 3.4vw, 38px); letter-spacing: -.04em; text-transform: uppercase; }
+.tabs button { font-size: 15px; font-weight: 700; letter-spacing: -.01em; text-transform: uppercase; }
+.count-head input#count { font-weight: 800; font-size: 40px; letter-spacing: -.04em; }
+.stats dt.total { font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: -.01em; }
+.stats dd.total { color: var(--ink); font-size: 18px; font-weight: 500; }
+.op .num { font-weight: 200; font-size: 44px; letter-spacing: -.04em; color: var(--ink); }
+.card .tok b { font-weight: 800; font-size: 34px; letter-spacing: -.04em; text-transform: uppercase; }
+.card .view { background: var(--raised); }
+.card .view pre { font-family: var(--f-mono); font-size: 13px; }
+footer .brandmark { font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: -.01em; }
+.veil span { font-weight: 700; font-size: 18px; text-transform: uppercase; letter-spacing: .02em; }
+.promise h3 { font-weight: 700; font-size: 19px; letter-spacing: -.02em; }
+td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
+.btn { border-radius: 0; font-weight: 700; letter-spacing: .1em; }
+.seg, .seg button, .presets button, .card .tok small, .soon { border-radius: 0; }
+.panel, .card, .preview, .scroll, .op pre, textarea, .drop { border-radius: 0; }
+.scroll { color: var(--ink); }
+.input.locked, input.locked { color: var(--ink); }
+.eyebrow, .intro .eyebrow { color: var(--ink); }
+.pill.pending::before { background: transparent; border: 1px solid currentColor; }
+.pill.fail { text-decoration: line-through; }
+.status-line i { background: var(--ink); }
+.veil span { border-radius: 0; }
+.token-head { border-bottom: 1px solid var(--line); padding-bottom: 22px; margin-bottom: 24px; }
+.token-head .eyebrow { margin-bottom: 10px !important; }
+.token-name { font: 800 clamp(40px, 6vw, 64px)/.95 var(--f-display) !important; font-stretch: 125% !important; letter-spacing: -.045em !important; color: var(--ink) !important; text-transform: uppercase !important; margin: 0 0 22px !important; }
+.token-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 0; }
+.token-facts dt { font: 500 10.5px var(--f-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.token-facts dd { margin: 0; font-size: 15px; color: var(--ink); }
+@media (max-width: 520px) { .token-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.admin-note { border: 1px solid var(--ink); padding: 12px 14px; font-size: 13px; margin: 0 0 22px; }
+#intro-tick { color: var(--ink); font-weight: 700; }
+.supply { margin-top: 24px; display: grid; gap: 10px; }
+.supply-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.supply-label { font: 500 10.5px var(--f-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.supply-num { font-size: 14px; color: var(--ink); }
+.supply-bar { height: 12px; border: 1px solid var(--ink); background: transparent; overflow: hidden; padding: 2px; }
+.supply-bar div { height: 100%; width: 0; background: var(--ink);
+ }
+@media (prefers-reduced-motion: no-preference) { .supply-bar div { transition: width .6s ease; } }
+.balance { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.balance .supply-num { font-size: 18px; }
+.supply-foot { display: flex; justify-content: space-between; gap: 12px; font-size: 11.5px; color: var(--muted); }
+#op-tabs { margin-bottom: 22px; }
+.warn-note { border-style: dashed; }
+.stats dt { padding-right: 16px; }
+@media (max-width: 520px) { .stats { grid-template-columns: 1fr; } .stats dt { border-bottom: 0; padding-bottom: 0; } .stats dd { text-align: left; padding-top: 2px; } .stats dt.total { padding-top: 16px; } }
+.glance { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); margin: 0 0 56px; }
+.glance-item { padding: 34px 20px 34px 0; border-left: 1px solid var(--line); }
+.glance-item:first-child { border-left: none; padding-left: 0; }
+.glance-item .k { display: block; font: 500 10.5px var(--f-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.glance-item .v { display: block; font: 800 clamp(22px, 3vw, 30px)/1 var(--f-display); font-stretch: 120%; letter-spacing: -.01em; color: var(--ink); padding-left: 14px; }
+@media (max-width: 700px) { .glance { grid-template-columns: repeat(2, 1fr); } .glance-item:nth-child(2n+1) { border-left: none; } .glance-item:nth-child(n+3) { border-top: 1px solid var(--line); padding-top: 18px; } }
+.inscript-box { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px 22px; overflow-x: auto; font: 13px/1.7 var(--f-mono); color: var(--ink); }
 </style>
 </head>
 <body>
-  <div class="wrap">
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1 translate="no">Robi<em>scriptions</em></h1>
+      <span class="sub">RSC-20 · Robinhood Chain</span>
+    </div>
+    <nav class="nav" aria-label="Pages">
+      <a href="index.html" aria-current="page">Mint</a>
+      <a href="https://x.com/robiscriptions" target="_blank" rel="noopener" class="nav-x" aria-label="Robiscriptions on X" title="@robiscriptions on X"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+      <a href="marketplace.html">Marketplace <span class="soon">Soon</span></a>
+    </nav>
+    <div class="top-actions">
+      <button id="connect" class="btn" type="button">Connect wallet</button>
+    </div>
+  </header>
+  <div id="wallet-pick" class="wallets" hidden></div>
+
+  <div class="intro">
     <div>
-      <h1>Temporarily offline</h1>
-      <p>Robiscriptions is offline for maintenance. Please check back shortly.</p>
+      <p class="eyebrow">RSC-20 protocol</p>
+      <h2>The first inscriptions on <em class="chain-color">Robinhood&nbsp;Chain</em>.</h2>
+    </div>
+    <p id="intro-text">Mint <b id="intro-tick">$ROBI</b>, an RSC-20 token on Robinhood Chain. Pay in ETH, 1,000 $<span id="intro-tick2">ROBI</span> per mint, straight from your own wallet. Every mint is a transaction whose data carries a JSON payload <span class="mono" translate="no">{"p":"rsc-20",…}</span>. No contract.</p>
+  </div>
+
+  <div class="countdown" id="countdown" hidden>
+    <div>
+      <p class="cd-label">Mint opens in</p>
+      <p class="cd-when" id="cd-when" translate="no">17:00 (Paris time)</p>
+    </div>
+    <div class="cd-grid" translate="no" aria-live="off">
+      <div class="cd-cell"><b id="cd-d">00</b><span>Days</span></div>
+      <div class="cd-cell"><b id="cd-h">00</b><span>Hours</span></div>
+      <div class="cd-cell"><b id="cd-m">00</b><span>Min</span></div>
+      <div class="cd-cell"><b id="cd-s">00</b><span>Sec</span></div>
     </div>
   </div>
+
+  <section class="glance" aria-label="At a glance">
+    <div class="glance-item"><span class="k">Max supply</span><span class="v" id="glance-max">–</span></div>
+    <div class="glance-item"><span class="k">Per mint</span><span class="v" id="glance-lim">–</span></div>
+    <div class="glance-item"><span class="k">Total mints</span><span class="v" id="glance-total">–</span></div>
+    <div class="glance-item"><span class="k">Payment</span><span class="v">ETH · RH</span></div>
+  </section>
+
+  <section class="howwhy" aria-label="How to mint and why it matters">
+    <div class="hw-col">
+      <h2>How to <em>mint</em></h2>
+      <ol class="hw-list">
+        <li><b>Get a wallet.</b> MetaMask or any EVM wallet works.</li>
+        <li><b>Fund it with ETH</b> on Robinhood Chain — this pays for your mint(s) and gas.</li>
+        <li><b>Connect on robiscriptions.com</b> and pick how many mints, up to 200 at once.</li>
+        <li><b>Approve in your wallet.</b> One transaction, no contract, no whitelist.</li>
+      </ol>
+    </div>
+    <div class="hw-col">
+      <h2>Why it <em>matters</em></h2>
+      <ol class="hw-list">
+        <li><b>No contract.</b> The token exists purely as on-chain calldata — the inscription itself is the asset.</li>
+        <li><b>Fully public mint.</b> No team allocation, no presale, no insiders.</li>
+        <li><b>First mover.</b> The first RSC-20 protocol token to mint on Robinhood Chain.</li>
+        <li><b>Verifiable supply.</b> Every mint is a transaction anyone can audit on the explorer.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="spec" aria-labelledby="inscript-title">
+    <div class="sec-head">
+      <h2 id="inscript-title">The <em>inscription</em></h2>
+      <p>What actually gets sent onchain when you mint — the ticker stays hidden until shortly before the mint opens.</p>
+    </div>
+    <pre id="inscript-json" class="inscript-box" translate="no"></pre>
+  </section>
+
+  <div class="atelier">
+    <form class="panel" id="composer" autocomplete="off">
+      <!-- Single-token site: text / image tabs and free-form token fields stay in the page but are hidden. -->
+      <div class="tabs" role="tablist" hidden>
+        <button type="button" role="tab" id="tab-token" aria-selected="true">RSC-20</button>
+        <button type="button" role="tab" id="tab-text" aria-selected="false">Text</button>
+        <button type="button" role="tab" id="tab-image" aria-selected="false">Image</button>
+      </div>
+      <div id="pane-text" hidden><textarea id="text-body"></textarea></div>
+      <div id="pane-image" hidden>
+        <div class="drop" id="drop" tabindex="-1"><img id="image-preview" alt="" hidden><span id="drop-label"></span></div>
+        <input id="image-file" type="file" accept="image/*" hidden>
+      </div>
+      <div id="pane-token" hidden>
+        <input id="tok-p" type="text" value="rsc-20" readonly>
+        <select id="tok-op"><option value="mint">mint</option><option value="deploy">deploy</option><option value="transfer">transfer</option></select>
+        <input id="tok-tick" type="text" readonly>
+        <div id="f-amt"><input id="tok-amt" type="text" readonly></div>
+        <div id="f-max"><input id="tok-max" type="text" readonly></div>
+        <div id="f-lim"><input id="tok-lim" type="text" readonly></div>
+      </div>
+
+      <!-- DEPLOY TAB (temporary): set SHOW_DEPLOY = false in the script to remove it. -->
+      <div class="tabs" role="tablist" id="op-tabs">
+        <button type="button" role="tab" id="op-mint" aria-selected="true">Mint</button>
+        <button type="button" role="tab" id="op-deploy" aria-selected="false">Deploy</button>
+      </div>
+
+      <div class="token-head">
+        <p class="eyebrow" id="token-mode">Now minting</p>
+        <h3 class="token-name" id="token-name" translate="no">$•••</h3>
+        <p class="tick-hint" id="tick-hint">Ticker revealed a few minutes before mint.</p>
+        <dl class="token-facts">
+          <div><dt>Protocol</dt><dd class="mono">RSC-20</dd></div>
+          <div><dt>Max supply</dt><dd class="mono" id="fact-max">–</dd></div>
+          <div><dt>Per mint</dt><dd class="mono" id="fact-lim">–</dd></div>
+          <div><dt>Payment</dt><dd class="mono">ETH · RH</dd></div>
+        </dl>
+        <div class="supply" id="supply">
+          <div class="supply-top">
+            <span class="supply-label">Minted</span>
+            <span class="supply-num mono" id="supply-num">Loading…</span>
+          </div>
+          <div class="supply-bar" role="progressbar" aria-label="Mint progress" aria-valuemin="0" aria-valuemax="100" id="supply-bar"><div id="supply-fill"></div></div>
+          <div class="supply-foot mono"><span id="supply-pct">–</span><span id="supply-left"></span></div>
+        </div>
+        <div class="balance" id="balance">
+          <span class="supply-label">Your balance</span>
+          <span class="supply-num mono" id="bal-num" translate="no">Connect wallet</span>
+        </div>
+      </div>
+      <div id="deploy-fields" hidden>
+        <div class="row">
+          <div class="field">
+            <label for="dep-tick">Ticker</label>
+            <input id="dep-tick" type="text" maxlength="16" spellcheck="false" autocapitalize="off">
+          </div>
+          <div class="field">
+            <label for="dep-max">Max supply</label>
+            <input id="dep-max" type="text" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label for="dep-lim">Limit per mint</label>
+            <input id="dep-lim" type="text" inputmode="numeric">
+          </div>
+        </div>
+        <p class="admin-note" id="admin-note">A deploy is final: the ticker, supply and limit can never be changed, and only the first deploy of a ticker counts. One transaction, no fee.</p>
+        <p class="admin-note warn-note" id="deploy-mismatch" hidden></p>
+      </div>
+
+      <div class="field" id="recipient-field" hidden>
+        <label for="recipient">Recipient</label>
+        <input id="recipient" type="text" placeholder="0x… (defaults to your address)" spellcheck="false">
+      </div>
+
+      <div class="field" id="count-field">
+        <div class="count-head">
+          <label for="count-range">Number of mints</label>
+          <input id="count" type="number" min="1" max="200" value="1" aria-label="Number of mints">
+        </div>
+        <input id="count-range" type="range" min="1" max="200" value="1" step="1">
+        <div class="ticks mono" aria-hidden="true"><span>1</span><span>50</span><span>100</span><span>150</span><span>200</span></div>
+        <div class="presets">
+          <button type="button" data-n="1">×1</button>
+          <button type="button" data-n="10">×10</button>
+          <button type="button" data-n="50">×50</button>
+          <button type="button" data-n="100">×100</button>
+          <button type="button" data-n="200">×200</button>
+        </div>
+        <span class="hint" id="count-hint">More than one mint is sent as a single transaction and a single approval in your wallet — the price and inscription just scale with the count.</span>
+      </div>
+      <input id="esip6" type="checkbox" hidden>
+    </form>
+
+    <aside class="panel" aria-live="polite">
+      <h3>Order slip</h3>
+      <div class="scroll mono" id="uri-preview" translate="no"></div>
+      <dl class="stats">
+        <dt>Size</dt><dd id="st-size">–</dd>
+        <dt>Network</dt><dd id="st-net">–</dd>
+        <dt hidden>Gas per mint</dt><dd id="st-gas" hidden>connect your wallet</dd>
+        <dt hidden>Gas total</dt><dd id="st-cost" hidden>–</dd>
+        <dt id="st-fee-label" hidden>Fee</dt><dd id="st-fee" hidden>–</dd>
+        <dt class="total">Total</dt><dd id="st-total" class="total">–</dd>
+      </dl>
+      <div class="cta">
+        <button id="inscribe" class="btn" type="button" translate="no">Connect to inscribe</button>
+        <div class="progress" id="progress" hidden><div id="progress-bar"></div></div>
+        <button id="stop" class="btn ghost" type="button" hidden>Stop the batch</button>
+        <p class="note" id="status"></p>
+      </div>
+      <ul class="log" id="log" translate="no" hidden></ul>
+    </aside>
+  </div>
+  <section class="spec" aria-labelledby="spec-title">
+    <div class="sec-head">
+      <h2 id="spec-title">The <em>RSC-20</em> protocol</h2>
+      <p>How the token lives on-chain. Each operation is inscribed as a data URI in a transaction sent to the owner.</p>
+    </div>
+    <div class="ops">
+      <div class="op">
+        <span class="num">i.</span>
+        <h3><span class="mono">deploy</span> Create the token</h3>
+        <p>Sets the ticker, the max supply and the amount per mint. The first deploy of a ticker is the one that counts.</p>
+        <pre id="spec-deploy" translate="no"></pre>
+      </div>
+      <div class="op">
+        <span class="num">ii.</span>
+        <h3><span class="mono">mint</span> Mint units</h3>
+        <p>Sent to the Robiscriptions mint address with the ETH price. The wallet that signs is credited, as long as supply remains.</p>
+        <pre id="spec-mint" translate="no"></pre>
+      </div>
+      <div class="op">
+        <span class="num">iii.</span>
+        <h3><span class="mono">transfer</span> Send a balance</h3>
+        <p>Sent to the transfer recipient and debited from the sender's balance.</p>
+        <pre id="spec-transfer" translate="no"></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="galerie">
+    <div class="sec-head">
+      <h2>Your <em>collection</em></h2>
+      <div class="top-actions">
+        <span class="note mono" id="gal-addr"></span>
+        <button id="gal-refresh" class="btn ghost" type="button">Refresh</button>
+      </div>
+    </div>
+    <div id="gal-grid" class="grid"></div>
+    <p class="empty" id="gal-empty">Connect your wallet to see the mints made from your address, read straight from the Robinhood Chain Blockscout explorer.</p>
+    <button id="gal-more" class="btn ghost" type="button" hidden>Load more</button>
+  </section>
+
+  <footer>
+    <span class="brandmark">Robiscriptions</span>
+    <span>Independent tool for the RSC-20 protocol, not affiliated with Robinhood Markets. Transactions are irreversible: check the network and recipient before signing.</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ================= TOKEN =================
+  // The one RSC-20 token this site mints. Deploy it once by opening the page with #deploy.
+  const TOKEN = { tick: 'robi', max: '10000000', lim: '1000' };   // 10,000,000 units, 1,000 per mint = 10,000 mints
+  // Ticker stays hidden on the page (shown as "•••") until LAUNCH_AT. Internal calls (chain reads/writes)
+  // still use the real ticker — this only masks what visitors see before launch.
+  const displayTick = () => (tickHidden() ? '•••' : TOKEN.tick.toUpperCase());
+  const maskTick = (s) => (tickHidden() ? s.replace(new RegExp(TOKEN.tick, 'gi'), '•••') : s);
+  // ================= FEE CONFIGURATION =================
+  // Address that receives the mint price (leave '' to disable).
+  // Price in ETH per mint, paid in a single transaction before the batch.
+  // The last `finalMints` mints switch to `finalPerMintEth`. The mint count is rebuilt from the
+  // payments received by `address` (Blockscout API), so this address should only receive mint payments.
+  const FEES = {
+    mainnet: { address: '0xa9aAdc2aeF3Bc0d8B41dfAEF497e67281c745FF5', perMintEth: '0.00043', finalPerMintEth: '0.00056', finalMints: 3000 },
+  };
+  // ===========================================================
+
+  const NETS = {
+    mainnet: {
+      label: 'Robinhood Chain', chainId: 4663, rpc: 'https://rpc.mainnet.chain.robinhood.com',
+      explorer: 'https://robinhoodchain.blockscout.com',
+    },
+  };
+  const MAX_BYTES = 90 * 1024;   // margin under the Arbitrum transaction size limit (~128 KB)
+  const MAX_COUNT = 200;
+
+  function ethToWei(s) {
+    const m = /^(\d*)(?:\.(\d{0,18}))?\d*$/.exec(String(s).trim());
+    if (!m) return 0n;
+    return BigInt(m[1] || '0') * 10n ** 18n + BigInt((m[2] || '').padEnd(18, '0') || '0');
+  }
+  // Price of the mint at position `index` (0-based) in the whole supply.
+  function priceAt(index) {
+    const f = FEES[state.net];
+    const final = f.finalMints > 0 && index >= TOTAL_MINTS - f.finalMints;
+    return ethToWei(final ? f.finalPerMintEth : f.perMintEth);
+  }
+  function feeOn() {
+    const f = FEES[state.net];
+    return !!f && /^0x[0-9a-fA-F]{40}$/.test(f.address) && !(state.mode === 'token' && $('tok-op').value !== 'mint');
+  }
+  // Total price for the next n mints (each mint carries its own price).
+  function feeFor(n) {
+    if (!feeOn()) return { total: 0n, address: null };
+    const start = state.minted || 0;
+    let total = 0n;
+    for (let i = 0; i < n; i++) total += priceAt(start + i);
+    return { total, address: FEES[state.net].address };
+  }
+  // Every mint is ONE transaction sent to the mint address (FEES.address) carrying the price in ETH
+  // and the RSC-20 JSON; the minter is the sender (from). This works with MetaMask, which refuses
+  // data sent to one of the user's own accounts. A deploy is sent to the dead address.
+  const DEAD = '0x000000000000000000000000000000000000dEaD';
+  function targetAddress() {
+    if (state.mode === 'token' && $('tok-op').value === 'deploy') return DEAD;
+    if (feeOn()) return FEES[state.net].address;
+    return $('recipient').value.trim() || state.account;
+  }
+  const TOTAL_MINTS = Math.floor(Number(TOKEN.max) / Number(TOKEN.lim));
+  function isFinalPhase() {
+    const f = FEES[state.net];
+    return state.minted != null && f.finalMints > 0 && state.minted >= TOTAL_MINTS - f.finalMints;
+  }
+
+  function renderSupply() {
+    const m = state.minted;
+    if (m == null) { $('supply-num').textContent = 'Loading…'; return; }
+    const done = Math.min(m, TOTAL_MINTS);
+    const pct = TOTAL_MINTS ? (done / TOTAL_MINTS) * 100 : 0;
+    const units = BigInt(done) * BigInt(TOKEN.lim);
+    $('supply-num').textContent = `${done.toLocaleString('en-US')} / ${TOTAL_MINTS.toLocaleString('en-US')} mints`;
+    $('supply-fill').style.width = pct + '%';
+    $('supply-bar').setAttribute('aria-valuenow', pct.toFixed(1));
+    $('supply-pct').textContent = (pct > 0 && pct < 0.1 ? '< 0.1' : pct.toFixed(pct < 10 ? 1 : 0)) + '%';
+    $('supply-left').textContent = done >= TOTAL_MINTS ? 'Sold out' : `${Number(units).toLocaleString('en-US')} / ${Number(TOKEN.max).toLocaleString('en-US')} $${displayTick()}`;
+  }
+
+  // A mint inscription's amt must be a positive multiple of TOKEN.lim — one multiple per
+  // unit folded into that transaction (amt = lim × n mints). Anything else is not a valid
+  // mint under the protocol and is not counted.
+  function unitsFromAmt(amtStr) {
+    let amt; try { amt = BigInt(String(amtStr).trim()); } catch { return 0; }
+    const lim = BigInt(TOKEN.lim);
+    if (lim <= 0n || amt <= 0n || amt % lim !== 0n) return 0;
+    return Number(amt / lim);
+  }
+
+  // Counts the paid mints: transactions to the mint address that carry this token's mint JSON.
+  async function loadMinted() {
+    const f = FEES[state.net];
+    if (!f || !/^0x[0-9a-fA-F]{40}$/.test(f.address)) { state.minted = null; return; }
+    const net = state.net;
+    const minPrice = ethToWei(f.perMintEth);
+    const want = TOKEN.tick.toLowerCase();
+    try {
+      let next = null, count = 0;
+      for (let page = 0; page < 400; page++) {
+        const qs = new URLSearchParams({ filter: 'to', ...(next || {}) });
+        const res = await fetch(`${NETS[net].explorer}/api/v2/addresses/${f.address}/transactions?${qs}`, { headers: { accept: 'application/json' } });
+        if (res.status === 404) break;
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const j = await res.json();
+        for (const tx of j.items || []) {
+          if (tx.status && tx.status !== 'ok') continue;
+          if ((tx.to?.hash || '').toLowerCase() !== f.address.toLowerCase()) continue;
+          if (BigInt(tx.value || '0') < minPrice) continue;
+          const input = (tx.raw_input || '').toLowerCase();
+          if (!input.startsWith(DATA_PREFIX)) continue;
+          const pu = parseUri(dec.decode(fromHex(input)));
+          if (pu.kind === 'token' && String(pu.o.p).toLowerCase() === 'rsc-20' && pu.o.op === 'mint' && String(pu.o.tick).toLowerCase() === want) count += unitsFromAmt(pu.o.amt);
+        }
+        next = j.next_page_params;
+        if (!next) break;
+      }
+      if (state.net === net) state.minted = count;
+    } catch (e) {
+      if (state.net === net && state.minted == null) state.minted = 0;
+    }
+    renderSupply(); updateCta(); scheduleEstimate();
+  }
+
+  // Balance of the connected address: its confirmed paid mints x units per mint.
+  let balSeq = 0;
+  function renderBalance(mints, err) {
+    const el = $('bal-num'), T = '$' + displayTick();
+    if (!state.account) { el.textContent = 'Connect wallet'; return; }
+    if (err) { el.textContent = 'Unavailable'; return; }
+    if (mints == null) { el.textContent = 'Loading…'; return; }
+    const units = BigInt(mints) * BigInt(TOKEN.lim);
+    el.textContent = `${units.toLocaleString('en-US')} ${T}` + (mints ? ` · ${mints.toLocaleString('en-US')} mint${mints > 1 ? 's' : ''}` : '');
+  }
+  async function loadBalance() {
+    const f = FEES[state.net], acct = state.account, net = state.net, seq = ++balSeq;
+    if (!acct || !f || !isAddr(f.address)) { renderBalance(null); return; }
+    renderBalance(null);
+    const minPrice = ethToWei(f.perMintEth), want = TOKEN.tick.toLowerCase(), me = acct.toLowerCase();
+    try {
+      let next = null, count = 0;
+      for (let page = 0; page < 100; page++) {
+        const qs = new URLSearchParams({ filter: 'from', ...(next || {}) });
+        const res = await fetch(`${NETS[net].explorer}/api/v2/addresses/${acct}/transactions?${qs}`, { headers: { accept: 'application/json' } });
+        if (res.status === 404) break;
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const j = await res.json();
+        for (const tx of j.items || []) {
+          if (tx.status && tx.status !== 'ok') continue;
+          if ((tx.from?.hash || '').toLowerCase() !== me) continue;
+          if ((tx.to?.hash || '').toLowerCase() !== f.address.toLowerCase()) continue;
+          if (BigInt(tx.value || '0') < minPrice) continue;
+          const input = (tx.raw_input || '').toLowerCase();
+          if (!input.startsWith(DATA_PREFIX)) continue;
+          const pu = parseUri(dec.decode(fromHex(input)));
+          if (pu.kind === 'token' && String(pu.o.p).toLowerCase() === 'rsc-20' && pu.o.op === 'mint' && String(pu.o.tick).toLowerCase() === want) count += unitsFromAmt(pu.o.amt);
+        }
+        next = j.next_page_params;
+        if (!next) break;
+      }
+      if (seq === balSeq) renderBalance(count);
+    } catch (e) { if (seq === balSeq) renderBalance(null, true); }
+  }
+
+  // ---------- Utilities ----------
+  const $ = (id) => document.getElementById(id);
+  const enc = new TextEncoder();
+  const dec = new TextDecoder('utf-8', { fatal: false });
+  const toHex = (bytes) => '0x' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  const fromHex = (h) => {
+    h = h.startsWith('0x') ? h.slice(2) : h;
+    const out = new Uint8Array(h.length >> 1);
+    for (let i = 0; i < out.length; i++) out[i] = parseInt(h.substr(i * 2, 2), 16);
+    return out;
+  };
+  const DATA_PREFIX = '0x646174613a'; // "data:"
+  const isAddr = (a) => /^0x[0-9a-fA-F]{40}$/.test(a);
+  const short = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '';
+  const fmtBytes = (n) => n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB';
+  const fmtEth = (wei) => {
+    const s = Number(wei) / 1e18;
+    return s === 0 ? '0 ETH' : (s < 0.000001 ? '< 0.000001 ETH' : parseFloat(s.toPrecision(3)).toString() + ' ETH');
+  };
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  };
+
+  // ---------- State ----------
+  const state = {
+    net: 'mainnet',
+    mode: 'token',
+    image: null,          // data URI de l'image
+    provider: null,
+    providers: [],
+    account: null,
+    busy: false,
+    minted: null,
+    galNext: null,
+    sent: store.get('rbs.sent', []), // [{hash, net, uri, time, status}]
+  };
+
+  // ---------- Wallet discovery (EIP-6963 + window.ethereum fallback) ----------
+  function isPhantom(provider, info) {
+    const tag = `${info?.name || ''} ${info?.rdns || ''}`.toLowerCase();
+    return !!(provider && provider.isPhantom) || tag.includes('phantom');
+  }
+  window.addEventListener('eip6963:announceProvider', (e) => {
+    const d = e.detail;
+    if (!d || !d.provider || state.providers.some((p) => p.info.uuid === d.info.uuid)) return;
+    if (isPhantom(d.provider, d.info)) return;   // Phantom is not offered on this site
+    state.providers.push(d);
+  });
+  window.dispatchEvent(new Event('eip6963:requestProvider'));
+
+  function pickProvider() {
+    return new Promise((resolve) => {
+      const list = state.providers.slice();
+      if (!list.length && window.ethereum && !isPhantom(window.ethereum)) list.push({ info: { name: 'Browser wallet', uuid: 'legacy' }, provider: window.ethereum });
+      if (!list.length) return resolve(null);
+      if (list.length === 1) return resolve(list[0].provider);
+      const box = $('wallet-pick');
+      box.replaceChildren();
+      list.forEach((p) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'btn ghost';
+        if (p.info.icon) { const i = document.createElement('img'); i.src = p.info.icon; i.alt = ''; b.append(i); }
+        b.append(p.info.name);
+        b.onclick = () => { box.hidden = true; resolve(p.provider); };
+        box.append(b);
+      });
+      box.hidden = false;
+    });
+  }
+
+  async function connect() {
+    const provider = await pickProvider();
+    if (!provider) { setStatus('No supported wallet detected. Install MetaMask, Rabby, OKX Wallet or Coinbase Wallet, then reload the page. Phantom is not supported.', 'err'); return; }
+    state.provider = provider;
+    try {
+      const accts = await provider.request({ method: 'eth_requestAccounts' });
+      state.account = accts[0];
+      if (!state.acctListener) {
+        state.acctListener = true;
+        provider.on?.('accountsChanged', async (a) => {
+          // Some wallets (MetaMask, Rabby...) briefly report an empty account list while their
+          // popup opens or closes around a transaction approval. That is not a real disconnect,
+          // so before dropping the session we double-check with a direct eth_accounts read.
+          let next = a && a[0];
+          if (!next) {
+            try { const check = await provider.request({ method: 'eth_accounts' }); next = check && check[0]; } catch {}
+          }
+          state.account = next || null;
+          onAccount();
+        });
+        provider.on?.('chainChanged', () => { refreshEstimate(); });
+      }
+      await ensureChain();
+      onAccount();
+    } catch (e) {
+      setStatus(errMsg(e), 'err');
+    }
+  }
+
+  async function ensureChain() {
+    const net = NETS[state.net];
+    const hexId = '0x' + net.chainId.toString(16);
+    const current = await state.provider.request({ method: 'eth_chainId' });
+    if (parseInt(current, 16) === net.chainId) return;
+    try {
+      await state.provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] });
+    } catch (e) {
+      if (e && (e.code === 4902 || e?.data?.originalError?.code === 4902 || /Unrecognized chain/i.test(e.message || ''))) {
+        await state.provider.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: hexId, chainName: net.label,
+            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+            rpcUrls: [net.rpc], blockExplorerUrls: [net.explorer],
+          }],
+        });
+      } else throw e;
+    }
+  }
+
+  function errMsg(e) {
+    if (!e) return 'Unknown error.';
+    if (e.code === 4001) return 'Signature rejected in the wallet.';
+    if (e.code === -32002) return 'A request is already open in your wallet: open it to approve.';
+    if (/internal accounts cannot include data/i.test(e.message || '')) return 'MetaMask blocks inscriptions sent to one of your own MetaMask accounts. Use another wallet (Rabby works) or enter a recipient address that is not in this MetaMask.';
+    return (e.shortMessage || e.message || String(e)).slice(0, 200);
+  }
+
+  function onAccount() {
+    const btn = $('connect');
+    if (state.account) {
+      btn.textContent = short(state.account);
+      btn.classList.add('ghost');
+      if (!$('recipient').value) $('recipient').placeholder = state.account + ' (you)';
+    } else {
+      btn.textContent = 'Connect wallet';
+      btn.classList.remove('ghost');
+    }
+    updateCta();
+    refreshEstimate();
+    loadGallery(true);
+    loadBalance();
+  }
+
+  // ---------- Building the data URI ----------
+  // `override` lets a caller replace fields of the token payload (used to fold several
+  // mints into one inscription: amt becomes lim × n instead of the single-mint lim).
+  function currentUri(override) {
+    const esip6 = $('esip6').checked;
+    const textPrefix = esip6 ? 'data:;rule=esip6,' : 'data:,';
+    if (state.mode === 'text') {
+      const t = $('text-body').value;
+      return t ? textPrefix + t : '';
+    }
+    if (state.mode === 'image') {
+      if (!state.image) return '';
+      // data:image/png;base64,....  -> adds ;rule=esip6 before the comma when requested
+      return esip6 ? state.image.replace(/;base64,/, ';rule=esip6;base64,') : state.image;
+    }
+    const op = $('tok-op').value;
+    const obj = { p: $('tok-p').value.trim(), op, tick: $('tok-tick').value.trim() };
+    if (op === 'deploy') { obj.max = $('tok-max').value.trim(); obj.lim = $('tok-lim').value.trim(); }
+    else obj.amt = $('tok-amt').value.trim();
+    if (override) Object.assign(obj, override);
+    return textPrefix + JSON.stringify(obj);
+  }
+
+  function validate(uri) {
+    if (!uri) return state.mode === 'image' ? 'Choose an image.' : 'The content is empty.';
+    const size = enc.encode(uri).length;
+    if (size > MAX_BYTES) return `Content too large (${fmtBytes(size)}, max ${fmtBytes(MAX_BYTES)}).`;
+    if (state.mode === 'token') {
+      const p = $('tok-p').value.trim(), tick = $('tok-tick').value.trim(), op = $('tok-op').value;
+      if (!p) return 'Enter the protocol.';
+      if (!tick) return 'Enter a ticker.';
+      if (/\s/.test(tick)) return 'The ticker cannot contain spaces.';
+      const nums = op === 'deploy' ? [$('tok-max').value, $('tok-lim').value] : [$('tok-amt').value];
+      if (nums.some((n) => !/^\d+$/.test(n.trim()) || /^0+$/.test(n.trim()))) return 'Amounts must be positive whole numbers.';
+      if (op === 'deploy' && BigInt($('tok-lim').value.trim() || '0') > BigInt($('tok-max').value.trim() || '0')) return 'The limit per mint cannot exceed the max supply.';
+    }
+    const r = $('recipient').value.trim();
+    if (r && !isAddr(r)) return 'Invalid recipient address.';
+    const c = +$('count').value;
+    if (state.mode === 'token' && $('tok-op').value === 'mint' && state.minted != null) {
+      const left = TOTAL_MINTS - state.minted;
+      if (left <= 0) return 'Sold out: all mints have been claimed.';
+      if (c > left) return `Only ${left} mint${left > 1 ? 's' : ''} left.`;
+    }
+    if (!Number.isInteger(c) || c < 1 || c > MAX_COUNT) return `Number of mints must be between 1 and ${MAX_COUNT}.`;
+    if (c > 1 && state.mode === 'token' && $('tok-op').value !== 'mint') return `Set the number to 1 for a ${$('tok-op').value}.`;
+    if (c > 1 && state.mode !== 'token' && !$('esip6').checked) return 'To inscribe the same content several times, turn on ESIP-6.';
+    return null;
+  }
+
+  function render() {
+    const uri = currentUri();
+    const size = uri ? enc.encode(uri).length : 0;
+    const pv = $('uri-preview');
+    pv.textContent = uri ? maskTick(uri.length > 1400 ? uri.slice(0, 1400) + ' …' : uri) : '—';
+    $('st-size').textContent = size ? fmtBytes(size) : '–';
+    $('st-net').textContent = NETS[state.net].label + ' · ' + NETS[state.net].chainId;
+    updateCta();
+    scheduleEstimate();
+  }
+
+  // ---------- Launch countdown ----------
+  // Mint opens 30 Sep 2026 at 17:00 Paris time (CEST, UTC+2). Set to 0 to open immediately.
+  const LAUNCH_AT = Date.parse('2026-09-30T17:00:00+02:00');
+  // The ticker itself is revealed a bit earlier than the mint, so early visitors can find the site
+  // and get ready without being able to mint (or tell anyone the ticker) ahead of time.
+  const REVEAL_AT = LAUNCH_AT - 5 * 60 * 1000;
+  const pad2 = (x) => String(x).padStart(2, '0');
+  const notYet = () => Date.now() < LAUNCH_AT;
+  const tickHidden = () => Date.now() < REVEAL_AT;
+  function tickCountdown() {
+    const box = $('countdown');
+    const left = LAUNCH_AT - Date.now();
+    refreshTickerLabels();
+    if (left <= 0) {
+      if (!box.hidden) { box.hidden = true; updateCta(); renderSupply(); loadBalance(); render(); }
+      return;
+    }
+    box.hidden = false;
+    const s = Math.floor(left / 1000);
+    $('cd-d').textContent = pad2(Math.floor(s / 86400));
+    $('cd-h').textContent = pad2(Math.floor(s % 86400 / 3600));
+    $('cd-m').textContent = pad2(Math.floor(s % 3600 / 60));
+    $('cd-s').textContent = pad2(s % 60);
+    try {
+      const local = new Date(LAUNCH_AT).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+      $('cd-when').textContent = local;
+    } catch {}
+    setTimeout(tickCountdown, 1000 - (Date.now() % 1000));
+  }
+
+  function updateCta() {
+    const b = $('inscribe');
+    if (notYet()) { b.textContent = 'Mint opens soon'; b.disabled = true; return; }
+    if (!state.account) { b.textContent = 'Connect to inscribe'; b.disabled = false; return; }
+    const err = validate(currentUri());
+    const n = +$('count').value || 1;
+    b.textContent = state.busy ? 'Batch in progress…' : (state.mode === 'token' ? (() => { const op = $('tok-op').value; const L = op === 'deploy' ? 'Deploy' : op === 'transfer' ? 'Transfer' : 'Mint'; return n > 1 ? `${L} ×${n}` : L; })() : (n > 1 ? `Inscribe ×${n}` : 'Inscribe'));
+    b.disabled = state.busy || !!err;
+    if (!state.busy) {
+      if (err) { setStatus(err, 'warn'); state.valMsg = true; }
+      else if (state.valMsg) { setStatus(''); state.valMsg = false; }
+    }
+  }
+
+  function setStatus(msg, cls) {
+    state.valMsg = false;
+    const s = $('status'); s.textContent = msg; s.className = 'note' + (cls ? ' ' + cls : '');
+  }
+
+  // ---------- Gas + fee estimate ----------
+  let estTimer;
+  function scheduleEstimate() { clearTimeout(estTimer); estTimer = setTimeout(refreshEstimate, 400); }
+  function renderFees(gasTotal) {
+    const n = +$('count').value || 1;
+    const fee = feeFor(n);
+    const on = !!fee.address;
+    if (on) $('st-fee').textContent = fmtEth(fee.total);
+    $('st-total').textContent = gasTotal == null ? (state.account ? '–' : 'connect your wallet') : fmtEth(gasTotal + fee.total);
+  }
+  async function refreshEstimate() {
+    const uri = currentUri();
+    if (!state.provider || !state.account) { $('st-gas').textContent = 'connect your wallet'; $('st-cost').textContent = '–'; renderFees(null); return; }
+    if (validate(uri)) { $('st-gas').textContent = '–'; $('st-cost').textContent = '–'; renderFees(null); return; }
+    try {
+      const chain = parseInt(await state.provider.request({ method: 'eth_chainId' }), 16);
+      if (chain !== NETS[state.net].chainId) { $('st-gas').textContent = 'wrong network in wallet'; $('st-cost').textContent = '–'; renderFees(null); return; }
+      const to = targetAddress();
+      const data = toHex(enc.encode(uri));
+      const [gas, price] = await Promise.all([
+        state.provider.request({ method: 'eth_estimateGas', params: [{ from: state.account, to, data, value: '0x0' }] }),
+        state.provider.request({ method: 'eth_gasPrice' }),
+      ]);
+      const g = BigInt(gas), p = BigInt(price), n = BigInt(+$('count').value || 1);
+      $('st-gas').textContent = g.toLocaleString('en-US') + ' · ' + fmtEth(g * p);
+      $('st-cost').textContent = fmtEth(g * p * n) + (n > 1n ? ` (×${n})` : '');
+      renderFees(g * p * n);
+    } catch (e) {
+      $('st-gas').textContent = 'estimate unavailable';
+      $('st-cost').textContent = '–';
+      renderFees(null);
+    }
+  }
+
+  // ---------- Sending ----------
+  function setProgress(done, n) {
+    const box = $('progress');
+    box.hidden = n <= 1;
+    $('progress-bar').style.width = (n ? (done / n) * 100 : 0) + '%';
+  }
+
+  async function inscribe() {
+    if (notYet()) return setStatus('Mint has not opened yet.', 'warn');
+    if (!state.account) return connect();
+    const uri = currentUri();
+    const err = validate(uri);
+    if (err) return setStatus(err, 'err');
+    const n = +$('count').value;
+    const to = targetAddress();
+    const fee = feeFor(n);
+    // A token mint can fold all n units into one on-chain transaction: one JSON payload
+    // with amt = lim × n, one signature, one inscription. Every other case (deploy, transfer,
+    // plain text/image repeats) keeps one transaction per item, since each is its own distinct
+    // inscription with nothing to fold together.
+    const isBatchableMint = state.mode === 'token' && $('tok-op').value === 'mint' && n > 1;
+    state.busy = true; state.stop = false; updateCta();
+    $('stop').hidden = isBatchableMint || n <= 1;
+    setProgress(0, n);
+    let done = 0;
+    try {
+      await ensureChain();
+      // MetaMask refuses data sent to one of its own accounts: stop before any payment is made.
+      const prov = state.provider || {};
+      if (prov.isMetaMask && !prov.isRabby) {
+        const own = (await prov.request({ method: 'eth_accounts' }).catch(() => [])).map((a) => a.toLowerCase());
+        if (own.includes(to.toLowerCase())) throw new Error('External transactions to internal accounts cannot include data');
+      }
+      const start = state.minted || 0;
+
+      if (isBatchableMint) {
+        const batchUri = currentUri({ amt: (BigInt(TOKEN.lim) * BigInt(n)).toString() });
+        const data = toHex(enc.encode(batchUri));
+        const value = fee.address ? fee.total : 0n;
+        setStatus(`Approve one transaction for all ${n} mints in your wallet.`);
+        const hash = await state.provider.request({
+          method: 'eth_sendTransaction',
+          params: [{ from: state.account, to, data, value: '0x' + value.toString(16) }],
+        });
+        const entry = { hash, net: state.net, uri: batchUri.slice(0, 300), time: Date.now(), status: 'pending' };
+        state.sent.unshift(entry); state.sent = state.sent.slice(0, 300); store.set('rbs.sent', state.sent);
+        renderLog();
+        watchReceipt(entry);
+        done = n; setProgress(done, n);
+        setStatus(`${n} mints sent in a single transaction.`);
+      } else {
+        for (let i = 0; i < n; i++) {
+          if (state.stop) break;
+          setStatus(n > 1 ? `Mint ${i + 1} of ${n}: approve in your wallet.` : 'Approve the transaction in your wallet.');
+          const data = toHex(enc.encode(uri));
+          const value = fee.address ? priceAt(start + i) : 0n;
+          const hash = await state.provider.request({
+            method: 'eth_sendTransaction',
+            params: [{ from: state.account, to, data, value: '0x' + value.toString(16) }],
+          });
+          const entry = { hash, net: state.net, uri: uri.slice(0, 300), time: Date.now(), status: 'pending' };
+          state.sent.unshift(entry); state.sent = state.sent.slice(0, 300); store.set('rbs.sent', state.sent);
+          renderLog();
+          watchReceipt(entry);
+          done++; setProgress(done, n);
+        }
+        setStatus(state.stop ? `Batch stopped: ${done} of ${n} sent.` : (n > 1 ? `${n} mints sent.` : 'Transaction sent. Waiting for confirmation…'), state.stop ? 'warn' : '');
+      }
+    } catch (e) {
+      setStatus((done ? `${done} of ${n} sent. ` : '') + errMsg(e), 'err');
+    } finally {
+      state.busy = false; $('stop').hidden = true; updateCta();
+      setTimeout(() => { loadMinted(); loadBalance(); }, 8000);
+    }
+  }
+
+  async function watchReceipt(entry) {
+    for (let i = 0; i < 90; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      try {
+        const rc = await state.provider.request({ method: 'eth_getTransactionReceipt', params: [entry.hash] });
+        if (rc) {
+          entry.status = rc.status === '0x1' ? 'ok' : 'fail';
+          store.set('rbs.sent', state.sent); renderLog();
+          if (entry.status === 'ok') setTimeout(() => loadGallery(true), 4000);
+          return;
+        }
+      } catch {}
+    }
+  }
+
+  function renderLog() {
+    const ul = $('log'); ul.replaceChildren();
+    state.sent.filter((s) => s.net === state.net).slice(0, 6).forEach((s) => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = `${NETS[s.net].explorer}/tx/${s.hash}`; a.target = '_blank'; a.rel = 'noopener';
+      a.className = 'mono'; a.textContent = (s.kind === 'fee' ? 'payment · ' : '') + short(s.hash);
+      const pill = document.createElement('span');
+      pill.className = 'pill ' + (s.status === 'ok' ? 'ok' : s.status === 'fail' ? 'fail' : 'pending');
+      pill.textContent = s.status === 'ok' ? 'confirmed' : s.status === 'fail' ? 'failed' : 'pending';
+      li.append(a, pill); ul.append(li);
+    });
+  }
+
+  // ---------- Gallery (Blockscout API v2) ----------
+  async function loadGallery(reset) {
+    const grid = $('gal-grid'), empty = $('gal-empty'), more = $('gal-more');
+    if (!state.account) { grid.replaceChildren(); empty.hidden = false; more.hidden = true; $('gal-addr').textContent = ''; return; }
+    $('gal-addr').textContent = short(state.account) + ' · ' + state.net;
+    if (reset) { grid.replaceChildren(); state.galNext = null; }
+    empty.hidden = true;
+    const base = `${NETS[state.net].explorer}/api/v2/addresses/${state.account}/transactions`;
+    const qs = '?' + new URLSearchParams({ filter: 'from', ...(state.galNext || {}) }).toString();
+    try {
+      const res = await fetch(base + qs, { headers: { accept: 'application/json' } });
+      if (res.status === 404) { if (reset) { empty.textContent = 'No transactions for this address on this network.'; empty.hidden = false; } more.hidden = true; return; }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const j = await res.json();
+      const mine = state.account.toLowerCase();
+      let added = 0;
+      for (const tx of j.items || []) {
+        const input = (tx.raw_input || '').toLowerCase();
+        if (!input.startsWith(DATA_PREFIX)) continue;
+        const mintAddr = feeOn() ? FEES[state.net].address.toLowerCase() : mine;
+        if ((tx.from?.hash || '').toLowerCase() !== mine) continue;   // minter = sender
+        if ((tx.to?.hash || '').toLowerCase() !== mintAddr) continue;
+        if (tx.status && tx.status !== 'ok') continue;
+        const uriText = dec.decode(fromHex(input));
+        const pu = parseUri(uriText);
+        if (pu.kind !== 'token' || String(pu.o.p).toLowerCase() !== 'rsc-20' || String(pu.o.tick).toLowerCase() !== TOKEN.tick.toLowerCase()) continue;
+        grid.append(card(uriText, tx.hash, tx.timestamp));
+        added++;
+      }
+      state.galNext = j.next_page_params || null;
+      more.hidden = !state.galNext;
+      if (reset && !added && !grid.children.length) {
+        empty.textContent = state.galNext ? 'No inscriptions in recent transactions. Load more to go further back.' : 'No mints from this address yet.';
+        empty.hidden = false;
+      }
+    } catch (e) {
+      empty.textContent = 'Could not read the explorer right now (' + errMsg(e) + '). Your sent transactions are still listed in the log above.';
+      empty.hidden = false; more.hidden = true;
+    }
+  }
+
+  function parseUri(uri) {
+    const m = /^data:([^,]*),(.*)$/s.exec(uri);
+    if (!m) return { kind: 'raw', text: uri };
+    const meta = m[1], body = m[2];
+    const mime = (meta.split(';')[0] || 'text/plain').toLowerCase();
+    const b64 = /;base64/i.test(meta);
+    if (mime.startsWith('image/')) return { kind: 'image', src: uri };
+    let text = body;
+    try { text = b64 ? dec.decode(Uint8Array.from(atob(body), (c) => c.charCodeAt(0))) : decodeURIComponentSafe(body); } catch {}
+    try {
+      const o = JSON.parse(text);
+      if (o && typeof o === 'object' && o.p && o.op && o.tick) return { kind: 'token', o };
+    } catch {}
+    return { kind: 'text', text };
+  }
+  function decodeURIComponentSafe(s) { try { return decodeURIComponent(s); } catch { return s; } }
+
+  function card(uri, hash, ts) {
+    const c = document.createElement('article'); c.className = 'card';
+    const v = document.createElement('div'); v.className = 'view';
+    const p = parseUri(uri);
+    if (p.kind === 'image') {
+      const img = document.createElement('img'); img.src = p.src; img.alt = 'Image inscription'; img.loading = 'lazy'; v.append(img);
+    } else if (p.kind === 'token') {
+      const d = document.createElement('div'); d.className = 'tok';
+      const tag = document.createElement('small'); tag.textContent = String(p.o.p).toUpperCase();
+      const b = document.createElement('b'); b.textContent = String(p.o.tick);
+      const s = document.createElement('span'); s.className = 'mono';
+      s.textContent = p.o.op + (p.o.amt ? ` · ${p.o.amt}` : '') + (p.o.max ? ` · max ${p.o.max}` : '');
+      d.append(tag, b, s); v.append(d);
+    } else {
+      const pre = document.createElement('pre'); pre.textContent = (p.text || '').slice(0, 600); v.append(pre);
+    }
+    const m = document.createElement('div'); m.className = 'meta';
+    const a = document.createElement('a'); a.href = `${NETS[state.net].explorer}/tx/${hash}`; a.target = '_blank'; a.rel = 'noopener';
+    a.className = 'mono'; a.textContent = short(hash);
+    const t = document.createElement('span'); t.textContent = ts ? new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    m.append(a, t); c.append(v, m);
+    return c;
+  }
+
+  // ---------- Events ----------
+  function setNet(n) {
+    state.net = n;
+    state.minted = null; renderSupply(); loadMinted(); loadBalance();
+    render(); renderLog();
+    if (state.provider) ensureChain().then(() => { refreshEstimate(); loadGallery(true); }).catch((e) => setStatus(errMsg(e), 'err'));
+  }
+  $('connect').onclick = () => state.account ? null : connect();
+  $('inscribe').onclick = inscribe;
+  $('stop').onclick = () => { state.stop = true; setStatus('Stopping after the current transaction…', 'warn'); };
+  function setCount(v) {
+    v = Math.max(1, Math.min(MAX_COUNT, Math.round(+v || 1)));
+    $('count').value = v; $('count-range').value = v;
+    $('count-range').style.setProperty('--fill', ((v - 1) / (MAX_COUNT - 1)) * 100 + '%');
+    document.querySelectorAll('.presets button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === v)));
+    render();
+  }
+  $('count-range').addEventListener('input', (e) => { e.stopPropagation(); setCount(e.target.value); });
+  $('count').addEventListener('change', (e) => setCount(e.target.value));
+  document.querySelectorAll('.presets button').forEach((b) => b.onclick = () => setCount(b.dataset.n));
+  $('gal-refresh').onclick = () => loadGallery(true);
+  $('gal-more').onclick = () => loadGallery(false);
+
+  ['text', 'image', 'token'].forEach((m) => {
+    $('tab-' + m).onclick = () => {
+      state.mode = m;
+      ['text', 'image', 'token'].forEach((k) => {
+        $('tab-' + k).setAttribute('aria-selected', String(k === m));
+        $('pane-' + k).hidden = k !== m;
+      });
+      render();
+    };
+  });
+  $('tok-op').onchange = () => {
+    const dep = $('tok-op').value === 'deploy';
+    if ($('tok-op').value !== 'mint') setCount(1);
+    $('f-amt').hidden = dep; $('f-max').hidden = !dep; $('f-lim').hidden = !dep;
+    render();
+  };
+  $('composer').addEventListener('input', render);
+  $('composer').addEventListener('submit', (e) => e.preventDefault());
+
+  // image
+  const drop = $('drop'), file = $('image-file');
+  drop.onclick = () => file.click();
+  drop.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); file.click(); } };
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) readImage(e.dataTransfer.files[0]); };
+  file.onchange = () => { if (file.files[0]) readImage(file.files[0]); };
+  function readImage(f) {
+    if (!f.type.startsWith('image/')) { setStatus('This file is not an image.', 'err'); return; }
+    const r = new FileReader();
+    r.onload = () => {
+      state.image = r.result;
+      const img = $('image-preview'); img.src = r.result; img.hidden = false;
+      $('drop-label').textContent = `${f.name} · ${fmtBytes(f.size)}`;
+      render();
+    };
+    r.readAsDataURL(f);
+  }
+
+  // ---------- Single-token setup ----------
+  const SHOW_DEPLOY = false;   // temporary Deploy tab — set to false to remove it from the site
+  const fmtN = (x) => Number(x).toLocaleString('en-US');
+  function refreshTickerLabels() {
+    const T = displayTick();
+    $('intro-tick2').textContent = T; $('intro-tick').textContent = '$' + T;
+    $('spec-deploy').textContent = maskTick(`data:,{"p":"rsc-20","op":"deploy",\n"tick":"${TOKEN.tick}","max":"${TOKEN.max}",\n"lim":"${TOKEN.lim}"}`);
+    $('spec-mint').textContent = maskTick(`data:,{"p":"rsc-20","op":"mint",\n"tick":"${TOKEN.tick}","amt":"${TOKEN.lim}"}`);
+    $('spec-transfer').textContent = maskTick(`data:,{"p":"rsc-20","op":"transfer",\n"tick":"${TOKEN.tick}","amt":"500"}`);
+    $('inscript-json').textContent = maskTick(`{"p":"rsc-20",\n "op":"mint",\n "tick":"${TOKEN.tick}",\n "amt":"${TOKEN.lim}"}`);
+    if (state.mode === 'token' && $('tok-op').value !== 'deploy') $('token-name').textContent = '$' + T;
+    $('tick-hint').hidden = !tickHidden();
+  }
+  refreshTickerLabels();
+  $('glance-max').textContent = fmtN(TOKEN.max);
+  $('glance-lim').textContent = fmtN(TOKEN.lim);
+  $('glance-total').textContent = fmtN(TOTAL_MINTS);
+  $('dep-tick').value = TOKEN.tick; $('dep-max').value = TOKEN.max; $('dep-lim').value = TOKEN.lim;
+  $('op-tabs').hidden = !SHOW_DEPLOY;
+
+  function syncDeploy() {
+    const tick = $('dep-tick').value.trim(), max = $('dep-max').value.trim(), lim = $('dep-lim').value.trim();
+    $('tok-tick').value = tick; $('tok-max').value = max; $('tok-lim').value = lim;
+    $('token-name').textContent = '$' + (tick || '…').toUpperCase();
+    $('fact-max').textContent = /^\d+$/.test(max) ? fmtN(max) : '–';
+    $('fact-lim').textContent = /^\d+$/.test(lim) ? fmtN(lim) : '–';
+    const differs = tick.toLowerCase() !== TOKEN.tick.toLowerCase() || max !== TOKEN.max || lim !== TOKEN.lim;
+    const mm = $('deploy-mismatch');
+    mm.hidden = !differs;
+    if (differs) mm.textContent = `The Mint tab still mints $${displayTick()} (${fmtN(TOKEN.max)} max, ${fmtN(TOKEN.lim)} per mint). Update TOKEN in the script to match this deploy before opening the mint.`;
+  }
+  function setOp(op) {
+    const dep = op === 'deploy' && SHOW_DEPLOY;
+    $('op-mint').setAttribute('aria-selected', String(!dep));
+    $('op-deploy').setAttribute('aria-selected', String(dep));
+    $('tok-op').value = dep ? 'deploy' : 'mint';
+    $('deploy-fields').hidden = !dep;
+    $('count-field').hidden = dep;
+    $('token-mode').textContent = dep ? 'Deploy a token' : 'Now minting';
+    if (dep) { setCount(1); syncDeploy(); }
+    else {
+      $('tok-tick').value = TOKEN.tick; $('tok-amt').value = TOKEN.lim; $('tok-max').value = TOKEN.max; $('tok-lim').value = TOKEN.lim;
+      $('token-name').textContent = '$' + displayTick();
+      $('fact-max').textContent = fmtN(TOKEN.max); $('fact-lim').textContent = fmtN(TOKEN.lim);
+    }
+    render();
+  }
+  $('op-mint').onclick = () => setOp('mint');
+  $('op-deploy').onclick = () => setOp('deploy');
+  ['dep-tick', 'dep-max', 'dep-lim'].forEach((id) => $(id).addEventListener('input', syncDeploy));
+  setOp(location.hash === '#deploy' ? 'deploy' : 'mint');
+
+  setNet(state.net);
+  setCount(1);
+  setInterval(() => { if (!state.busy) { loadMinted(); loadBalance(); } }, 30000);
+  renderLog();
+  tickCountdown();
+})();
+</script>
 </body>
 </html>
