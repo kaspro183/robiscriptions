@@ -343,10 +343,6 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       <a href="marketplace.html">Marketplace <span class="soon">Soon</span></a>
     </nav>
     <div class="top-actions">
-      <div class="seg" role="group" aria-label="Network">
-        <button id="net-mainnet" type="button" aria-pressed="true">Mainnet</button>
-        <button id="net-testnet" type="button" aria-pressed="false">Testnet</button>
-      </div>
       <button id="connect" class="btn" type="button">Connect wallet</button>
     </div>
   </header>
@@ -498,7 +494,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
           <button type="button" data-n="100">×100</button>
           <button type="button" data-n="200">×200</button>
         </div>
-        <span class="hint" id="count-hint">Each mint is one transaction: the ETH price and the inscription go together, and the tokens go to the wallet that signs. You can stop the batch at any time.</span>
+        <span class="hint" id="count-hint">More than one mint is sent as a single transaction and a single approval in your wallet — the price and inscription just scale with the count.</span>
       </div>
       <input id="esip6" type="checkbox" hidden>
     </form>
@@ -587,7 +583,6 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   // payments received by `address` (Blockscout API), so this address should only receive mint payments.
   const FEES = {
     mainnet: { address: '0xa9aAdc2aeF3Bc0d8B41dfAEF497e67281c745FF5', perMintEth: '0.00043', finalPerMintEth: '0.00056', finalMints: 3000 },
-    testnet: { address: '0xa9aAdc2aeF3Bc0d8B41dfAEF497e67281c745FF5', perMintEth: '0.00043', finalPerMintEth: '0.00056', finalMints: 3000 },
   };
   // ===========================================================
 
@@ -595,10 +590,6 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     mainnet: {
       label: 'Robinhood Chain', chainId: 4663, rpc: 'https://rpc.mainnet.chain.robinhood.com',
       explorer: 'https://robinhoodchain.blockscout.com',
-    },
-    testnet: {
-      label: 'Robinhood Chain Testnet', chainId: 46630, rpc: 'https://rpc.testnet.chain.robinhood.com',
-      explorer: 'https://explorer.testnet.chain.robinhood.com',
     },
   };
   const MAX_BYTES = 90 * 1024;   // margin under the Arbitrum transaction size limit (~128 KB)
@@ -655,6 +646,16 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     $('supply-left').textContent = done >= TOTAL_MINTS ? 'Sold out' : `${Number(units).toLocaleString('en-US')} / ${Number(TOKEN.max).toLocaleString('en-US')} $${displayTick()}`;
   }
 
+  // A mint inscription's amt must be a positive multiple of TOKEN.lim — one multiple per
+  // unit folded into that transaction (amt = lim × n mints). Anything else is not a valid
+  // mint under the protocol and is not counted.
+  function unitsFromAmt(amtStr) {
+    let amt; try { amt = BigInt(String(amtStr).trim()); } catch { return 0; }
+    const lim = BigInt(TOKEN.lim);
+    if (lim <= 0n || amt <= 0n || amt % lim !== 0n) return 0;
+    return Number(amt / lim);
+  }
+
   // Counts the paid mints: transactions to the mint address that carry this token's mint JSON.
   async function loadMinted() {
     const f = FEES[state.net];
@@ -677,7 +678,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
           const input = (tx.raw_input || '').toLowerCase();
           if (!input.startsWith(DATA_PREFIX)) continue;
           const pu = parseUri(dec.decode(fromHex(input)));
-          if (pu.kind === 'token' && String(pu.o.p).toLowerCase() === 'rsc-20' && pu.o.op === 'mint' && String(pu.o.tick).toLowerCase() === want) count++;
+          if (pu.kind === 'token' && String(pu.o.p).toLowerCase() === 'rsc-20' && pu.o.op === 'mint' && String(pu.o.tick).toLowerCase() === want) count += unitsFromAmt(pu.o.amt);
         }
         next = j.next_page_params;
         if (!next) break;
@@ -720,7 +721,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
           const input = (tx.raw_input || '').toLowerCase();
           if (!input.startsWith(DATA_PREFIX)) continue;
           const pu = parseUri(dec.decode(fromHex(input)));
-          if (pu.kind === 'token' && String(pu.o.p).toLowerCase() === 'rsc-20' && pu.o.op === 'mint' && String(pu.o.tick).toLowerCase() === want) count++;
+          if (pu.kind === 'token' && String(pu.o.p).toLowerCase() === 'rsc-20' && pu.o.op === 'mint' && String(pu.o.tick).toLowerCase() === want) count += unitsFromAmt(pu.o.amt);
         }
         next = j.next_page_params;
         if (!next) break;
@@ -755,7 +756,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 
   // ---------- State ----------
   const state = {
-    net: store.get('rbs.net', 'mainnet'),
+    net: 'mainnet',
     mode: 'token',
     image: null,          // data URI de l'image
     provider: null,
@@ -862,7 +863,9 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   }
 
   // ---------- Building the data URI ----------
-  function currentUri() {
+  // `override` lets a caller replace fields of the token payload (used to fold several
+  // mints into one inscription: amt becomes lim × n instead of the single-mint lim).
+  function currentUri(override) {
     const esip6 = $('esip6').checked;
     const textPrefix = esip6 ? 'data:;rule=esip6,' : 'data:,';
     if (state.mode === 'text') {
@@ -878,6 +881,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     const obj = { p: $('tok-p').value.trim(), op, tick: $('tok-tick').value.trim() };
     if (op === 'deploy') { obj.max = $('tok-max').value.trim(); obj.lim = $('tok-lim').value.trim(); }
     else obj.amt = $('tok-amt').value.trim();
+    if (override) Object.assign(obj, override);
     return textPrefix + JSON.stringify(obj);
   }
 
@@ -1017,10 +1021,14 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     if (err) return setStatus(err, 'err');
     const n = +$('count').value;
     const to = targetAddress();
-    const data = toHex(enc.encode(uri));
     const fee = feeFor(n);
+    // A token mint can fold all n units into one on-chain transaction: one JSON payload
+    // with amt = lim × n, one signature, one inscription. Every other case (deploy, transfer,
+    // plain text/image repeats) keeps one transaction per item, since each is its own distinct
+    // inscription with nothing to fold together.
+    const isBatchableMint = state.mode === 'token' && $('tok-op').value === 'mint' && n > 1;
     state.busy = true; state.stop = false; updateCta();
-    $('stop').hidden = n <= 1;
+    $('stop').hidden = isBatchableMint || n <= 1;
     setProgress(0, n);
     let done = 0;
     try {
@@ -1032,21 +1040,40 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
         if (own.includes(to.toLowerCase())) throw new Error('External transactions to internal accounts cannot include data');
       }
       const start = state.minted || 0;
-      for (let i = 0; i < n; i++) {
-        if (state.stop) break;
-        setStatus(n > 1 ? `Mint ${i + 1} of ${n}: approve in your wallet.` : 'Approve the transaction in your wallet.');
-        const value = fee.address ? priceAt(start + i) : 0n;
+
+      if (isBatchableMint) {
+        const batchUri = currentUri({ amt: (BigInt(TOKEN.lim) * BigInt(n)).toString() });
+        const data = toHex(enc.encode(batchUri));
+        const value = fee.address ? fee.total : 0n;
+        setStatus(`Approve one transaction for all ${n} mints in your wallet.`);
         const hash = await state.provider.request({
           method: 'eth_sendTransaction',
           params: [{ from: state.account, to, data, value: '0x' + value.toString(16) }],
         });
-        const entry = { hash, net: state.net, uri: uri.slice(0, 300), time: Date.now(), status: 'pending' };
+        const entry = { hash, net: state.net, uri: batchUri.slice(0, 300), time: Date.now(), status: 'pending' };
         state.sent.unshift(entry); state.sent = state.sent.slice(0, 300); store.set('rbs.sent', state.sent);
         renderLog();
         watchReceipt(entry);
-        done++; setProgress(done, n);
+        done = n; setProgress(done, n);
+        setStatus(`${n} mints sent in a single transaction.`);
+      } else {
+        for (let i = 0; i < n; i++) {
+          if (state.stop) break;
+          setStatus(n > 1 ? `Mint ${i + 1} of ${n}: approve in your wallet.` : 'Approve the transaction in your wallet.');
+          const data = toHex(enc.encode(uri));
+          const value = fee.address ? priceAt(start + i) : 0n;
+          const hash = await state.provider.request({
+            method: 'eth_sendTransaction',
+            params: [{ from: state.account, to, data, value: '0x' + value.toString(16) }],
+          });
+          const entry = { hash, net: state.net, uri: uri.slice(0, 300), time: Date.now(), status: 'pending' };
+          state.sent.unshift(entry); state.sent = state.sent.slice(0, 300); store.set('rbs.sent', state.sent);
+          renderLog();
+          watchReceipt(entry);
+          done++; setProgress(done, n);
+        }
+        setStatus(state.stop ? `Batch stopped: ${done} of ${n} sent.` : (n > 1 ? `${n} mints sent.` : 'Transaction sent. Waiting for confirmation…'), state.stop ? 'warn' : '');
       }
-      setStatus(state.stop ? `Batch stopped: ${done} of ${n} sent.` : (n > 1 ? `${n} mints sent.` : 'Transaction sent. Waiting for confirmation…'), state.stop ? 'warn' : '');
     } catch (e) {
       setStatus((done ? `${done} of ${n} sent. ` : '') + errMsg(e), 'err');
     } finally {
@@ -1168,15 +1195,11 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
 
   // ---------- Events ----------
   function setNet(n) {
-    state.net = n; store.set('rbs.net', n);
+    state.net = n;
     state.minted = null; renderSupply(); loadMinted(); loadBalance();
-    $('net-mainnet').setAttribute('aria-pressed', String(n === 'mainnet'));
-    $('net-testnet').setAttribute('aria-pressed', String(n === 'testnet'));
     render(); renderLog();
     if (state.provider) ensureChain().then(() => { refreshEstimate(); loadGallery(true); }).catch((e) => setStatus(errMsg(e), 'err'));
   }
-  $('net-mainnet').onclick = () => setNet('mainnet');
-  $('net-testnet').onclick = () => setNet('testnet');
   $('connect').onclick = () => state.account ? null : connect();
   $('inscribe').onclick = inscribe;
   $('stop').onclick = () => { state.stop = true; setStatus('Stopping after the current transaction…', 'warn'); };
