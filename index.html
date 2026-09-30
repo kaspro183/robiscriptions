@@ -221,6 +221,15 @@ section.spec { margin-top: 96px; }
 .op h3 .mono { color: var(--gold); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
 .op p { font-size: 13.5px; color: var(--muted); margin: 0 0 16px; }
 .op pre { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font: 12px/1.65 var(--f-mono); color: var(--ink); }
+.phases { display: flex; flex-direction: column; }
+.phase-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.phase-row:last-child { border-bottom: none; }
+.phase-row .n { font: 500 14.5px var(--f-body); color: var(--ink); }
+.phase-row .d { font: 500 12px var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.phase-row .p { font: 500 14px var(--f-mono); color: var(--ink); }
+@media (max-width: 560px) { .phase-row { flex-wrap: wrap; } .phase-row .d { order: 3; width: 100%; } }
+.tick-hint { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
+.tick-hint[hidden] { display: none; }
 
 /* ---------- collection ---------- */
 section.galerie { margin-top: 96px; }
@@ -382,6 +391,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       <div class="token-head">
         <p class="eyebrow" id="token-mode">Now minting</p>
         <h3 class="token-name" id="token-name" translate="no">$•••</h3>
+        <p class="tick-hint" id="tick-hint">Ticker revealed when the mint opens.</p>
         <dl class="token-facts">
           <div><dt>Protocol</dt><dd class="mono">RSC-20</dd></div>
           <div><dt>Max supply</dt><dd class="mono" id="fact-max">–</dd></div>
@@ -464,6 +474,14 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       <ul class="log" id="log" translate="no" hidden></ul>
     </aside>
   </div>
+
+  <section class="phases-sec" aria-labelledby="phases-title">
+    <div class="sec-head">
+      <h2 id="phases-title">Mint <em>phases</em></h2>
+      <p>Every mint costs ETH. The price is not shown ahead of time — approve the amount in your wallet.</p>
+    </div>
+    <div class="phases" id="phases"></div>
+  </section>
 
   <section class="spec" aria-labelledby="spec-title">
     <div class="sec-head">
@@ -1106,7 +1124,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   // ---------- Events ----------
   function setNet(n) {
     state.net = n; store.set('rbs.net', n);
-    state.minted = null; renderSupply(); loadMinted(); loadBalance();
+    state.minted = null; renderSupply(); loadMinted(); loadBalance(); renderPhases();
     $('net-mainnet').setAttribute('aria-pressed', String(n === 'mainnet'));
     $('net-testnet').setAttribute('aria-pressed', String(n === 'testnet'));
     render(); renderLog();
@@ -1179,8 +1197,32 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     $('spec-mint').textContent = maskTick(`data:,{"p":"rsc-20","op":"mint",\n"tick":"${TOKEN.tick}","amt":"${TOKEN.lim}"}`);
     $('spec-transfer').textContent = maskTick(`data:,{"p":"rsc-20","op":"transfer",\n"tick":"${TOKEN.tick}","amt":"500"}`);
     if (state.mode === 'token' && $('tok-op').value !== 'deploy') $('token-name').textContent = '$' + T;
+    $('tick-hint').hidden = !notYet();
   }
   refreshTickerLabels();
+
+  // ---------- Mint phases (no prices shown; per-mint price stays private) ----------
+  function renderPhases() {
+    const f = FEES[state.net];
+    const box = $('phases'); box.replaceChildren();
+    const rows = [];
+    if (f && f.finalMints > 0 && f.finalMints < TOTAL_MINTS) {
+      const cut = TOTAL_MINTS - f.finalMints;
+      rows.push([`Mints 1 – ${cut.toLocaleString('en-US')}`, 'Standard phase', 'Paid in ETH']);
+      rows.push([`Mints ${(cut + 1).toLocaleString('en-US')} – ${TOTAL_MINTS.toLocaleString('en-US')}`, 'Final phase', 'Paid in ETH']);
+    } else {
+      rows.push([`Mints 1 – ${TOTAL_MINTS.toLocaleString('en-US')}`, 'Single phase', 'Paid in ETH']);
+    }
+    rows.push([`${TOTAL_MINTS.toLocaleString('en-US')} / ${TOTAL_MINTS.toLocaleString('en-US')}`, 'Sold out', 'Supply fixed forever']);
+    for (const [n, d, p] of rows) {
+      const row = document.createElement('div'); row.className = 'phase-row';
+      const a = document.createElement('span'); a.className = 'n'; a.textContent = n;
+      const b = document.createElement('span'); b.className = 'd'; b.textContent = d;
+      const c = document.createElement('span'); c.className = 'p mono'; c.textContent = p;
+      row.append(a, b, c); box.append(row);
+    }
+  }
+  renderPhases();
   $('dep-tick').value = TOKEN.tick; $('dep-max').value = TOKEN.max; $('dep-lim').value = TOKEN.lim;
   $('op-tabs').hidden = !SHOW_DEPLOY;
 
