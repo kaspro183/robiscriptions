@@ -108,6 +108,15 @@ header.top {
 .intro h2 em { color: var(--gold); }
 .intro p { margin: 0; color: var(--muted); max-width: 46ch; font-size: 15.5px; }
 .intro p .mono { color: var(--ink); }
+.countdown { border: 1px solid var(--line-strong); border-radius: 14px; padding: 26px 28px; margin: 0 0 28px; display: flex; flex-wrap: wrap; gap: 20px 40px; align-items: center; justify-content: space-between; }
+.countdown[hidden] { display: none; }
+.countdown .cd-label { font: 500 11px var(--f-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.countdown .cd-when { font: 400 15px var(--f-body); color: var(--ink); margin: 0; }
+.cd-grid { display: flex; gap: 14px; }
+.cd-cell { text-align: center; min-width: 68px; }
+.cd-cell b { display: block; font: 400 clamp(34px, 7vw, 52px)/1 var(--f-display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.cd-cell span { font: 500 10px var(--f-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+@media (max-width: 560px) { .countdown { padding: 20px 16px; } .cd-grid { gap: 8px; width: 100%; justify-content: space-between; } .cd-cell { min-width: 0; } }
 
 /* ---------- studio ---------- */
 .atelier { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; align-items: start; }
@@ -323,6 +332,19 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       <h2>The first inscriptions on <em>Robinhood&nbsp;Chain</em>.</h2>
     </div>
     <p id="intro-text">Mint <b id="intro-tick">$ROBI</b>, an RSC-20 token on Robinhood Chain. Pay in ETH, 1,000 $<span id="intro-tick2">ROBI</span> per mint, straight from your own wallet. Every mint is a transaction whose data carries a JSON payload <span class="mono" translate="no">{"p":"rsc-20",…}</span>. No contract.</p>
+  </div>
+
+  <div class="countdown" id="countdown" hidden>
+    <div>
+      <p class="cd-label">Mint opens in</p>
+      <p class="cd-when" id="cd-when" translate="no">17:00 (Paris time)</p>
+    </div>
+    <div class="cd-grid" translate="no" aria-live="off">
+      <div class="cd-cell"><b id="cd-d">00</b><span>Days</span></div>
+      <div class="cd-cell"><b id="cd-h">00</b><span>Hours</span></div>
+      <div class="cd-cell"><b id="cd-m">00</b><span>Min</span></div>
+      <div class="cd-cell"><b id="cd-s">00</b><span>Sec</span></div>
+    </div>
   </div>
 
   <div class="atelier">
@@ -786,8 +808,34 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     scheduleEstimate();
   }
 
+  // ---------- Launch countdown ----------
+  // Mint opens 30 Sep 2026 at 17:00 Paris time (CEST, UTC+2). Set to 0 to open immediately.
+  const LAUNCH_AT = Date.parse('2026-09-30T17:00:00+02:00');
+  const pad2 = (x) => String(x).padStart(2, '0');
+  const notYet = () => Date.now() < LAUNCH_AT;
+  function tickCountdown() {
+    const box = $('countdown');
+    const left = LAUNCH_AT - Date.now();
+    if (left <= 0) {
+      if (!box.hidden) { box.hidden = true; updateCta(); }
+      return;
+    }
+    box.hidden = false;
+    const s = Math.floor(left / 1000);
+    $('cd-d').textContent = pad2(Math.floor(s / 86400));
+    $('cd-h').textContent = pad2(Math.floor(s % 86400 / 3600));
+    $('cd-m').textContent = pad2(Math.floor(s % 3600 / 60));
+    $('cd-s').textContent = pad2(s % 60);
+    try {
+      const local = new Date(LAUNCH_AT).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+      $('cd-when').textContent = local;
+    } catch {}
+    setTimeout(tickCountdown, 1000 - (Date.now() % 1000));
+  }
+
   function updateCta() {
     const b = $('inscribe');
+    if (notYet()) { b.textContent = 'Mint opens soon'; b.disabled = true; return; }
     if (!state.account) { b.textContent = 'Connect to inscribe'; b.disabled = false; return; }
     const err = validate(currentUri());
     const n = +$('count').value || 1;
@@ -846,6 +894,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   }
 
   async function inscribe() {
+    if (notYet()) return setStatus('Mint has not opened yet.', 'warn');
     if (!state.account) return connect();
     const uri = currentUri();
     const err = validate(uri);
@@ -1114,6 +1163,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
   setCount(1);
   setInterval(() => { if (!state.busy) loadMinted(); }, 30000);
   renderLog();
+  tickCountdown();
 })();
 </script>
 </body>
