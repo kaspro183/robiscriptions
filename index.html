@@ -322,7 +322,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       <p class="eyebrow">RSC-20 protocol</p>
       <h2>The first inscriptions on <em>Robinhood&nbsp;Chain</em>.</h2>
     </div>
-    <p id="intro-text">Mint <b id="intro-tick">$ROBI</b>, an RSC-20 token on Robinhood Chain. Pay in ETH, 1,000 $<span id="intro-tick2">ROBI</span> per mint. Every mint is a transaction whose data carries a JSON payload <span class="mono">{"p":"rsc-20",…}</span>. No contract: your wallet signs.</p>
+    <p id="intro-text">Mint <b id="intro-tick">$ROBI</b>, an RSC-20 token on Robinhood Chain. Pay in ETH, 1,000 $<span id="intro-tick2">ROBI</span> per mint, straight from your own wallet. Every mint is a transaction whose data carries a JSON payload <span class="mono">{"p":"rsc-20",…}</span>. No contract.</p>
   </div>
 
   <div class="atelier">
@@ -390,7 +390,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
         <p class="admin-note warn-note" id="deploy-mismatch" hidden></p>
       </div>
 
-      <div class="field" id="recipient-field">
+      <div class="field" id="recipient-field" hidden>
         <label for="recipient">Recipient</label>
         <input id="recipient" type="text" placeholder="0x… (defaults to your address)" spellcheck="false">
       </div>
@@ -409,7 +409,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
           <button type="button" data-n="100">×100</button>
           <button type="button" data-n="200">×200</button>
         </div>
-        <span class="hint" id="count-hint">Each mint is a separate transaction to sign in your wallet. You can stop the batch at any time.</span>
+        <span class="hint" id="count-hint">Each mint is one transaction: the ETH price and the inscription go together, and the $ROBI go to the wallet that signs. You can stop the batch at any time.</span>
       </div>
       <input id="esip6" type="checkbox" hidden>
     </form>
@@ -450,7 +450,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       <div class="op">
         <span class="num">ii.</span>
         <h3><span class="mono">mint</span> Mint units</h3>
-        <p>Credits the recipient as long as supply remains and the amount stays within the limit.</p>
+        <p>Sent to the Robiscriptions mint address with the ETH price. The wallet that signs is credited, as long as supply remains.</p>
         <pre id="spec-mint"></pre>
       </div>
       <div class="op">
@@ -471,7 +471,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       </div>
     </div>
     <div id="gal-grid" class="grid"></div>
-    <p class="empty" id="gal-empty">Connect your wallet to see the inscriptions received by your address, read straight from the Robinhood Chain Blockscout explorer.</p>
+    <p class="empty" id="gal-empty">Connect your wallet to see the mints made from your address, read straight from the Robinhood Chain Blockscout explorer.</p>
     <button id="gal-more" class="btn ghost" type="button" hidden>Load more</button>
   </section>
 
@@ -517,18 +517,31 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     if (!m) return 0n;
     return BigInt(m[1] || '0') * 10n ** 18n + BigInt((m[2] || '').padEnd(18, '0') || '0');
   }
-  function feeFor(n) {
+  // Price of the mint at position `index` (0-based) in the whole supply.
+  function priceAt(index) {
     const f = FEES[state.net];
-    if (!f || !/^0x[0-9a-fA-F]{40}$/.test(f.address)) return { total: 0n, address: null };
-    if (state.mode === 'token' && $('tok-op').value !== 'mint') return { total: 0n, address: null }; // no fee on deploy / transfer
-    const per = ethToWei(isFinalPhase() ? f.finalPerMintEth : f.perMintEth);
-    return { total: per * BigInt(n), address: f.address, per };
+    const final = f.finalMints > 0 && index >= TOTAL_MINTS - f.finalMints;
+    return ethToWei(final ? f.finalPerMintEth : f.perMintEth);
   }
-  // A deploy is sent to the dead address: MetaMask refuses data sent to one of your own accounts,
-  // and the deployer is identified by the sender (from), not the receiver.
+  function feeOn() {
+    const f = FEES[state.net];
+    return !!f && /^0x[0-9a-fA-F]{40}$/.test(f.address) && !(state.mode === 'token' && $('tok-op').value !== 'mint');
+  }
+  // Total price for the next n mints (each mint carries its own price).
+  function feeFor(n) {
+    if (!feeOn()) return { total: 0n, address: null };
+    const start = state.minted || 0;
+    let total = 0n;
+    for (let i = 0; i < n; i++) total += priceAt(start + i);
+    return { total, address: FEES[state.net].address };
+  }
+  // Every mint is ONE transaction sent to the mint address (FEES.address) carrying the price in ETH
+  // and the RSC-20 JSON; the minter is the sender (from). This works with MetaMask, which refuses
+  // data sent to one of the user's own accounts. A deploy is sent to the dead address.
   const DEAD = '0x000000000000000000000000000000000000dEaD';
   function targetAddress() {
     if (state.mode === 'token' && $('tok-op').value === 'deploy') return DEAD;
+    if (feeOn()) return FEES[state.net].address;
     return $('recipient').value.trim() || state.account;
   }
   const TOTAL_MINTS = Math.floor(Number(TOKEN.max) / Number(TOKEN.lim));
@@ -550,17 +563,16 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     $('supply-left').textContent = done >= TOTAL_MINTS ? 'Sold out' : `${Number(units).toLocaleString('en-US')} / ${Number(TOKEN.max).toLocaleString('en-US')} $${TOKEN.tick.toUpperCase()}`;
   }
 
-  // Rebuilds the number of mints sold from the payments received by the fee address.
+  // Counts the paid mints: transactions to the mint address that carry this token's mint JSON.
   async function loadMinted() {
     const f = FEES[state.net];
     if (!f || !/^0x[0-9a-fA-F]{40}$/.test(f.address)) { state.minted = null; return; }
     const net = state.net;
-    const p1 = ethToWei(f.perMintEth), p2 = ethToWei(f.finalPerMintEth || f.perMintEth);
-    const threshold = TOTAL_MINTS - (f.finalMints || 0);
-    const values = [];
+    const minPrice = ethToWei(f.perMintEth);
+    const want = TOKEN.tick.toLowerCase();
     try {
-      let next = null;
-      for (let page = 0; page < 100; page++) {
+      let next = null, count = 0;
+      for (let page = 0; page < 400; page++) {
         const qs = new URLSearchParams({ filter: 'to', ...(next || {}) });
         const res = await fetch(`${NETS[net].explorer}/api/v2/addresses/${f.address}/transactions?${qs}`, { headers: { accept: 'application/json' } });
         if (res.status === 404) break;
@@ -569,18 +581,14 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
         for (const tx of j.items || []) {
           if (tx.status && tx.status !== 'ok') continue;
           if ((tx.to?.hash || '').toLowerCase() !== f.address.toLowerCase()) continue;
-          values.push(BigInt(tx.value || '0'));
+          if (BigInt(tx.value || '0') < minPrice) continue;
+          const input = (tx.raw_input || '').toLowerCase();
+          if (!input.startsWith(DATA_PREFIX)) continue;
+          const pu = parseUri(dec.decode(fromHex(input)));
+          if (pu.kind === 'token' && String(pu.o.p).toLowerCase() === 'rsc-20' && pu.o.op === 'mint' && String(pu.o.tick).toLowerCase() === want) count++;
         }
         next = j.next_page_params;
         if (!next) break;
-      }
-      let count = 0;
-      for (const v of values.reverse()) {            // oldest first
-        if (v <= 0n) continue;
-        const asP1 = v % p1 === 0n ? Number(v / p1) : null;
-        const asP2 = v % p2 === 0n ? Number(v / p2) : null;
-        if (asP1 != null && (count < threshold || asP2 == null)) count += asP1;
-        else if (asP2 != null) count += asP2;
       }
       if (state.net === net) state.minted = count;
     } catch (e) {
@@ -798,7 +806,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     const n = +$('count').value || 1;
     const fee = feeFor(n);
     const on = !!fee.address;
-    if (on) $('st-fee').textContent = fmtEth(fee.total) + (n > 1 ? ` (${FEES[state.net].perMintEth} × ${n})` : '');
+    if (on) $('st-fee').textContent = fmtEth(fee.total);
     $('st-total').textContent = gasTotal == null ? (state.account ? '–' : 'connect your wallet') : fmtEth(gasTotal + fee.total);
   }
   async function refreshEstimate() {
@@ -853,21 +861,14 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
         const own = (await prov.request({ method: 'eth_accounts' }).catch(() => [])).map((a) => a.toLowerCase());
         if (own.includes(to.toLowerCase())) throw new Error('External transactions to internal accounts cannot include data');
       }
-      if (fee.address && fee.total > 0n) {
-        setStatus('Approve the payment in your wallet.');
-        const feeHash = await state.provider.request({
-          method: 'eth_sendTransaction',
-          params: [{ from: state.account, to: fee.address, value: '0x' + fee.total.toString(16) }],
-        });
-        const fe = { hash: feeHash, net: state.net, uri: 'frais', kind: 'fee', time: Date.now(), status: 'pending' };
-        state.sent.unshift(fe); store.set('rbs.sent', state.sent); renderLog(); watchReceipt(fe);
-      }
+      const start = state.minted || 0;
       for (let i = 0; i < n; i++) {
         if (state.stop) break;
         setStatus(n > 1 ? `Mint ${i + 1} of ${n}: approve in your wallet.` : 'Approve the transaction in your wallet.');
+        const value = fee.address ? priceAt(start + i) : 0n;
         const hash = await state.provider.request({
           method: 'eth_sendTransaction',
-          params: [{ from: state.account, to, data, value: '0x0' }],
+          params: [{ from: state.account, to, data, value: '0x' + value.toString(16) }],
         });
         const entry = { hash, net: state.net, uri: uri.slice(0, 300), time: Date.now(), status: 'pending' };
         state.sent.unshift(entry); state.sent = state.sent.slice(0, 300); store.set('rbs.sent', state.sent);
@@ -921,7 +922,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     if (reset) { grid.replaceChildren(); state.galNext = null; }
     empty.hidden = true;
     const base = `${NETS[state.net].explorer}/api/v2/addresses/${state.account}/transactions`;
-    const qs = state.galNext ? '?' + new URLSearchParams(state.galNext).toString() : '';
+    const qs = '?' + new URLSearchParams({ filter: 'from', ...(state.galNext || {}) }).toString();
     try {
       const res = await fetch(base + qs, { headers: { accept: 'application/json' } });
       if (res.status === 404) { if (reset) { empty.textContent = 'No transactions for this address on this network.'; empty.hidden = false; } more.hidden = true; return; }
@@ -932,7 +933,9 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       for (const tx of j.items || []) {
         const input = (tx.raw_input || '').toLowerCase();
         if (!input.startsWith(DATA_PREFIX)) continue;
-        if ((tx.to?.hash || '').toLowerCase() !== mine) continue;   // owner = recipient
+        const mintAddr = feeOn() ? FEES[state.net].address.toLowerCase() : mine;
+        if ((tx.from?.hash || '').toLowerCase() !== mine) continue;   // minter = sender
+        if ((tx.to?.hash || '').toLowerCase() !== mintAddr) continue;
         if (tx.status && tx.status !== 'ok') continue;
         const uriText = dec.decode(fromHex(input));
         const pu = parseUri(uriText);
@@ -943,7 +946,7 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
       state.galNext = j.next_page_params || null;
       more.hidden = !state.galNext;
       if (reset && !added && !grid.children.length) {
-        empty.textContent = state.galNext ? 'No inscriptions in recent transactions. Load more to go further back.' : 'No inscriptions received by this address yet.';
+        empty.textContent = state.galNext ? 'No inscriptions in recent transactions. Load more to go further back.' : 'No mints from this address yet.';
         empty.hidden = false;
       }
     } catch (e) {
@@ -1088,7 +1091,6 @@ td.tick { font-weight: 700; font-size: 17px; text-transform: uppercase; }
     $('tok-op').value = dep ? 'deploy' : 'mint';
     $('deploy-fields').hidden = !dep;
     $('count-field').hidden = dep;
-    $('recipient-field').hidden = dep;
     $('token-mode').textContent = dep ? 'Deploy a token' : 'Now minting';
     if (dep) { setCount(1); syncDeploy(); }
     else {
